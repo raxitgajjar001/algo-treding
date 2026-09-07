@@ -1351,7 +1351,7 @@ async function checkAuthentication() {
   if (!token) {
     if (screen) {
       screen.style.display = 'flex';
-      screen.classList.remove('lamp-on'); // Start in OFF dark state so user pulls cord
+      screen.classList.add('lamp-on'); // Start in ON state so user immediately sees login form!
     }
     return false;
   }
@@ -1368,7 +1368,7 @@ async function checkAuthentication() {
       sessionStorage.removeItem('algo_auth_token');
       if (screen) {
         screen.style.display = 'flex';
-        screen.classList.remove('lamp-on');
+        screen.classList.add('lamp-on');
       }
       return false;
     }
@@ -1749,12 +1749,12 @@ function startDashboardLoops() {
   fetchNews();
   initNativeChart('NIFTY');
 
-  setInterval(fetchStatus, 4000);
-  setInterval(fetchScanner, 6000);
-  setInterval(fetchActiveTrades, 4000);
-  setInterval(fetchTradeHistory, 4000);
-  setInterval(() => fetchNews(false), 25000);
-  setInterval(fetchLiveTicks, 800);
+  setInterval(fetchLiveTicks, 500);
+  setInterval(fetchActiveTrades, 2000);
+  setInterval(fetchTradeHistory, 3000);
+  setInterval(fetchStatus, 3000);
+  setInterval(fetchScanner, 5000);
+  setInterval(() => fetchNews(false), 20000);
 }
 
 let activeMobileUrl = '';

@@ -54,12 +54,20 @@ engine = TradingEngine()
 background_task = None
 
 async def market_worker():
+    cycle_count = 0
     while True:
         try:
-            engine.execute_cycle()
+            # High-speed active trade evaluation (Every 1.5s during market hours)
+            if engine.is_indian_market_open() and engine.active_trades:
+                engine.evaluate_active_trades()
+
+            # Full scan and news cycle (Every 6 seconds)
+            if cycle_count % 4 == 0:
+                engine.execute_cycle()
+            cycle_count += 1
         except Exception as e:
             engine.log(f'Worker cycle error: {str(e)}', 'DANGER')
-        await asyncio.sleep(10)
+        await asyncio.sleep(1.5)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

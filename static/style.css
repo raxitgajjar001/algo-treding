@@ -568,7 +568,8 @@ tr:hover {
   align-items: center;
   justify-content: center;
   transition: background-color 0.45s ease;
-  overflow: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   user-select: none;
 }
 
@@ -746,6 +747,7 @@ tr:hover {
   font-size: 0.85rem;
 }
 
+
 .btn-lamp-login {
   width: 100%;
   background: linear-gradient(135deg, #a855f7, #9333ea);
@@ -801,26 +803,6 @@ tr:hover {
   box-shadow: 0 0 40px rgba(239, 68, 68, 0.7), 0 10px 30px rgba(0, 0, 0, 0.9) !important;
 }
 
-@media (max-width: 768px) {
-  .lamp-scene-container {
-    flex-direction: column;
-    gap: 15px;
-  }
-  .lamp-wrapper {
-    height: 250px;
-    transform: scale(0.85);
-  }
-  .lamp-login-card {
-    width: 100%;
-    max-width: 330px;
-    padding: 24px 20px;
-    transform: translateY(20px) scale(0.93);
-  }
-  .lamp-on .lamp-login-card {
-    transform: translateY(0) scale(1);
-  }
-}
-
 #forgot-password-modal {
   user-select: text !important;
   pointer-events: auto !important;
@@ -832,6 +814,40 @@ tr:hover {
 
 /* Enhanced Mobile Responsiveness */
 @media (max-width: 768px) {
+  #lamp-login-screen {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    display: flex !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    padding: 24px 14px 40px !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+  }
+  .lamp-scene-container {
+    flex-direction: column !important;
+    gap: 8px !important;
+    margin: auto !important;
+    width: 100% !important;
+    max-width: 360px !important;
+  }
+  .lamp-wrapper {
+    height: 120px !important;
+    width: 120px !important;
+    margin: 0 auto !important;
+    transform: scale(0.85) !important;
+  }
+  .lamp-login-card {
+    width: 100% !important;
+    max-width: 350px !important;
+    margin: 0 auto !important;
+    padding: 24px 20px !important;
+    opacity: 1 !important;
+    transform: none !important;
+    pointer-events: auto !important;
+    border-color: #a855f7 !important;
+    box-shadow: 0 0 30px rgba(168, 85, 247, 0.4), 0 10px 25px rgba(0, 0, 0, 0.7) !important;
+  }
   .top-header {
     flex-direction: column !important;
     align-items: flex-start !important;
