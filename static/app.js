@@ -1341,57 +1341,99 @@ function pullLampCord() {
   }
 }
 
+function showDashboardScreen() {
+  const screen = document.getElementById('lamp-login-screen');
+  const dashboard = document.getElementById('app-dashboard');
+  if (screen) {
+    screen.classList.add('hidden-screen');
+    screen.classList.remove('visible-flex');
+    screen.style.setProperty('display', 'none', 'important');
+    screen.style.setProperty('visibility', 'hidden', 'important');
+  }
+  if (dashboard) {
+    dashboard.classList.remove('hidden-screen');
+    dashboard.classList.add('visible-screen');
+    dashboard.style.setProperty('display', 'block', 'important');
+    dashboard.style.setProperty('visibility', 'visible', 'important');
+  }
+}
+
+function showLoginScreen() {
+  const screen = document.getElementById('lamp-login-screen');
+  const dashboard = document.getElementById('app-dashboard');
+  if (dashboard) {
+    dashboard.classList.add('hidden-screen');
+    dashboard.classList.remove('visible-screen');
+    dashboard.style.setProperty('display', 'none', 'important');
+    dashboard.style.setProperty('visibility', 'hidden', 'important');
+  }
+  if (screen) {
+    screen.classList.remove('hidden-screen');
+    screen.classList.add('visible-flex');
+    screen.classList.add('lamp-on');
+    screen.style.setProperty('display', 'flex', 'important');
+    screen.style.setProperty('visibility', 'visible', 'important');
+  }
+}
+
 async function checkAuthentication() {
   // Clear any old persistent local storage tokens so opening platform ALWAYS starts at the lamp screen
   localStorage.removeItem('algo_auth_token');
   
   const token = sessionStorage.getItem('algo_auth_token');
-  const screen = document.getElementById('lamp-login-screen');
-  const dashboard = document.getElementById('app-dashboard');
   
   if (!token) {
-    if (dashboard) dashboard.style.display = 'none';
-    if (screen) {
-      screen.style.display = 'flex';
-      screen.classList.add('lamp-on'); // Start in ON state so user immediately sees login form!
-    }
+    showLoginScreen();
     return false;
   }
   try {
     const res = await fetch(`/api/auth/check?token=${encodeURIComponent(token)}`);
     const data = await res.json();
     if (data.authenticated) {
-      if (screen) screen.style.display = 'none';
-      if (dashboard) dashboard.style.display = 'block';
+      showDashboardScreen();
       const savedUser = sessionStorage.getItem('algo_auth_user') || 'Raxit@5001';
       const userBadge = document.getElementById('user-badge');
       if (userBadge) userBadge.textContent = `👤 ${savedUser}`;
       return true;
     } else {
       sessionStorage.removeItem('algo_auth_token');
-      if (dashboard) dashboard.style.display = 'none';
-      if (screen) {
-        screen.style.display = 'flex';
-        screen.classList.add('lamp-on');
-      }
+      showLoginScreen();
       return false;
     }
   } catch (e) {
-    if (dashboard) dashboard.style.display = 'block';
-    if (screen) screen.style.display = 'none';
+    showDashboardScreen();
     return true; // Fallback in case of brief network disconnect
   }
 }
 
 async function submitLampLogin(e) {
-  e.preventDefault();
-  const username = document.getElementById('lamp-username').value.trim();
-  const password = document.getElementById('lamp-password').value.trim();
+  if (e) {
+    e.preventDefault();
+  }
+  const userEl = document.getElementById('lamp-username');
+  const passEl = document.getElementById('lamp-password');
+  const username = userEl ? userEl.value.trim() : '';
+  const password = passEl ? passEl.value.trim() : '';
   const errDiv = document.getElementById('lamp-login-error');
   const card = document.querySelector('.lamp-login-card');
+  const submitBtn = document.querySelector('.btn-lamp-login');
 
-  errDiv.style.display = 'none';
+  if (!username || !password) {
+    if (errDiv) {
+      errDiv.innerHTML = '<strong>⚠️ અધૂરું ફોર્મ:</strong> કૃપા કરીને User ID અને Password બંને દાખલ કરો.';
+      errDiv.style.display = 'block';
+    }
+    if (!username && userEl) userEl.focus();
+    else if (!password && passEl) passEl.focus();
+    return;
+  }
+
+  if (errDiv) errDiv.style.display = 'none';
   if (card) card.classList.remove('shake-error');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '⏳ પ્રવેશ થઈ રહ્યો છે...';
+  }
 
   try {
     const res = await fetch('/api/auth/login', {
@@ -1404,35 +1446,36 @@ async function submitLampLogin(e) {
       sessionStorage.setItem('algo_auth_token', data.token);
       sessionStorage.setItem('algo_auth_user', data.username);
       
-      const screen = document.getElementById('lamp-login-screen');
-      if (screen) screen.style.display = 'none';
-      
-      const dashboard = document.getElementById('app-dashboard');
-      if (dashboard) dashboard.style.display = 'block';
+      showDashboardScreen();
       
       const userBadge = document.getElementById('user-badge');
       if (userBadge) userBadge.textContent = `👤 ${data.username}`;
       startDashboardLoops();
     } else {
-      // STRICT NO ENTRY ENFORCEMENT
       playRejectionSound();
       if (card) {
         void card.offsetWidth; // Trigger reflow to restart animation
         card.classList.add('shake-error');
       }
-      errDiv.innerHTML = `<strong>⛔ Access Denied:</strong><br/>${data.detail || 'Invalid User ID or Password. No Entry!'}`;
-      errDiv.style.display = 'block';
-
-      // Clear password field and refocus
-      const pwdInput = document.getElementById('lamp-password');
-      if (pwdInput) {
-        pwdInput.value = '';
-        pwdInput.focus();
+      if (errDiv) {
+        errDiv.innerHTML = `<strong>⛔ પ્રવેશ નામંજૂર:</strong><br/>${data.detail || 'અમાન્ય User ID અથવા Password. સાચો પાસવર્ડ દાખલ કરો!'}`;
+        errDiv.style.display = 'block';
+      }
+      if (passEl) {
+        passEl.value = '';
+        passEl.focus();
       }
     }
   } catch (err) {
-    errDiv.textContent = 'સર્વર સાથે કનેક્ટ ન થઈ શક્યું: ' + err;
-    errDiv.style.display = 'block';
+    if (errDiv) {
+      errDiv.textContent = 'સર્વર સાથે કનેક્ટ ન થઈ શક્યું: ' + err;
+      errDiv.style.display = 'block';
+    }
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = 'Login';
+    }
   }
 }
 
@@ -1698,14 +1741,8 @@ async function logoutUser() {
   localStorage.removeItem('algo_auth_token');
   localStorage.removeItem('algo_auth_user');
   
-  const dashboard = document.getElementById('app-dashboard');
-  if (dashboard) dashboard.style.display = 'none';
+  showLoginScreen();
 
-  const screen = document.getElementById('lamp-login-screen');
-  if (screen) {
-    screen.style.display = 'flex';
-    screen.classList.add('lamp-on');
-  }
   const pwdInput = document.getElementById('lamp-password');
   if (pwdInput) pwdInput.value = '';
 }
@@ -1753,20 +1790,20 @@ function startDashboardLoops() {
   if (dashboardLoopsStarted) return;
   dashboardLoopsStarted = true;
 
-  fetchStatus();
-  fetchScanner();
-  fetchActiveTrades();
-  fetchTradeHistory();
-  fetchAccounts();
-  fetchNews();
-  initNativeChart('NIFTY');
+  try { fetchStatus(); } catch (e) { console.error('fetchStatus err:', e); }
+  try { fetchScanner(); } catch (e) { console.error('fetchScanner err:', e); }
+  try { fetchActiveTrades(); } catch (e) { console.error('fetchActiveTrades err:', e); }
+  try { fetchTradeHistory(); } catch (e) { console.error('fetchTradeHistory err:', e); }
+  try { fetchAccounts(); } catch (e) { console.error('fetchAccounts err:', e); }
+  try { fetchNews(); } catch (e) { console.error('fetchNews err:', e); }
+  try { initNativeChart('NIFTY'); } catch (e) { console.error('initNativeChart err:', e); }
 
-  setInterval(fetchLiveTicks, 500);
-  setInterval(fetchActiveTrades, 2000);
-  setInterval(fetchTradeHistory, 3000);
-  setInterval(fetchStatus, 3000);
-  setInterval(fetchScanner, 5000);
-  setInterval(() => fetchNews(false), 20000);
+  setInterval(() => { try { fetchLiveTicks(); } catch(e){} }, 500);
+  setInterval(() => { try { fetchActiveTrades(); } catch(e){} }, 2000);
+  setInterval(() => { try { fetchTradeHistory(); } catch(e){} }, 3000);
+  setInterval(() => { try { fetchStatus(); } catch(e){} }, 3000);
+  setInterval(() => { try { fetchScanner(); } catch(e){} }, 5000);
+  setInterval(() => { try { fetchNews(false); } catch(e){} }, 20000);
 }
 
 let activeMobileUrl = '';

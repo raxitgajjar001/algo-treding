@@ -41,6 +41,28 @@ html, body {
   box-sizing: border-box;
 }
 
+.hidden-screen {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+  z-index: -99999 !important;
+}
+
+.visible-screen {
+  display: block !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  opacity: 1 !important;
+}
+
+.visible-flex {
+  display: flex !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  opacity: 1 !important;
+}
+
 /* Header */
 .top-header {
   display: flex;
@@ -883,12 +905,20 @@ tr:hover {
     overflow-y: auto !important;
     overflow-x: hidden !important;
     -webkit-overflow-scrolling: touch !important;
-    display: flex !important;
+    display: flex;
     align-items: center !important;
     justify-content: center !important;
     padding: 16px 12px !important;
     box-sizing: border-box !important;
-    z-index: 9999999 !important;
+    z-index: 9999999;
+  }
+
+  #lamp-login-screen.hidden-screen {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    opacity: 0 !important;
+    z-index: -99999 !important;
   }
 
   .lamp-scene-container {
