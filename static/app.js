@@ -1347,8 +1347,10 @@ async function checkAuthentication() {
   
   const token = sessionStorage.getItem('algo_auth_token');
   const screen = document.getElementById('lamp-login-screen');
+  const dashboard = document.getElementById('app-dashboard');
   
   if (!token) {
+    if (dashboard) dashboard.style.display = 'none';
     if (screen) {
       screen.style.display = 'flex';
       screen.classList.add('lamp-on'); // Start in ON state so user immediately sees login form!
@@ -1360,12 +1362,14 @@ async function checkAuthentication() {
     const data = await res.json();
     if (data.authenticated) {
       if (screen) screen.style.display = 'none';
+      if (dashboard) dashboard.style.display = 'block';
       const savedUser = sessionStorage.getItem('algo_auth_user') || 'Raxit@5001';
       const userBadge = document.getElementById('user-badge');
       if (userBadge) userBadge.textContent = `👤 ${savedUser}`;
       return true;
     } else {
       sessionStorage.removeItem('algo_auth_token');
+      if (dashboard) dashboard.style.display = 'none';
       if (screen) {
         screen.style.display = 'flex';
         screen.classList.add('lamp-on');
@@ -1373,6 +1377,8 @@ async function checkAuthentication() {
       return false;
     }
   } catch (e) {
+    if (dashboard) dashboard.style.display = 'block';
+    if (screen) screen.style.display = 'none';
     return true; // Fallback in case of brief network disconnect
   }
 }
@@ -1400,6 +1406,9 @@ async function submitLampLogin(e) {
       
       const screen = document.getElementById('lamp-login-screen');
       if (screen) screen.style.display = 'none';
+      
+      const dashboard = document.getElementById('app-dashboard');
+      if (dashboard) dashboard.style.display = 'block';
       
       const userBadge = document.getElementById('user-badge');
       if (userBadge) userBadge.textContent = `👤 ${data.username}`;
@@ -1689,10 +1698,13 @@ async function logoutUser() {
   localStorage.removeItem('algo_auth_token');
   localStorage.removeItem('algo_auth_user');
   
+  const dashboard = document.getElementById('app-dashboard');
+  if (dashboard) dashboard.style.display = 'none';
+
   const screen = document.getElementById('lamp-login-screen');
   if (screen) {
     screen.style.display = 'flex';
-    screen.classList.remove('lamp-on'); // Return to dim/off state
+    screen.classList.add('lamp-on');
   }
   const pwdInput = document.getElementById('lamp-password');
   if (pwdInput) pwdInput.value = '';

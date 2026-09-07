@@ -22,11 +22,23 @@
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
-body {
+html, body {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+  margin: 0;
+  padding: 0;
   background-color: var(--bg-main);
   color: var(--text-main);
   min-height: 100vh;
+}
+
+#app-dashboard {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
   padding: 16px 24px;
+  box-sizing: border-box;
 }
 
 /* Header */
@@ -285,12 +297,21 @@ body {
   display: grid;
   grid-template-columns: 1.65fr 1.1fr;
   gap: 20px;
+  width: 100%;
+  min-width: 0;
 }
 
 @media (max-width: 1100px) {
   .dashboard-grid {
     grid-template-columns: 1fr;
+    min-width: 0;
   }
+}
+
+.grid-column {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
 }
 
 .panel {
@@ -300,6 +321,10 @@ body {
   padding: 18px;
   margin-bottom: 20px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .panel-header {
@@ -309,6 +334,8 @@ body {
   padding-bottom: 12px;
   border-bottom: 1.5px solid var(--border-color);
   margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .panel-title {
@@ -333,6 +360,11 @@ body {
 .table-wrapper {
   overflow-x: auto;
   max-height: 400px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  -webkit-overflow-scrolling: touch;
 }
 
 table {
@@ -558,10 +590,12 @@ tr:hover {
    ============================================================ */
 #lamp-login-screen {
   position: fixed;
-  top: 0;
-  left: 0;
+  inset: 0;
+  width: 100%;
   width: 100vw;
+  height: 100%;
   height: 100vh;
+  height: 100dvh;
   z-index: 9999999;
   background-color: #0d0f16;
   display: flex;
@@ -569,6 +603,7 @@ tr:hover {
   justify-content: center;
   transition: background-color 0.45s ease;
   overflow-y: auto;
+  overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   user-select: none;
 }
@@ -812,74 +847,288 @@ tr:hover {
   pointer-events: auto !important;
 }
 
-/* Enhanced Mobile Responsiveness */
+/* Enhanced Mobile Responsiveness (100% Screen Fit - Zero Horizontal Slide) */
 @media (max-width: 768px) {
-  #lamp-login-screen {
-    overflow-y: auto !important;
+  html, body {
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    position: relative !important;
     -webkit-overflow-scrolling: touch !important;
-    display: flex !important;
-    align-items: flex-start !important;
-    justify-content: center !important;
-    padding: 24px 14px 40px !important;
+  }
+  
+  #app-dashboard {
+    padding: 10px 8px 30px !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  #lamp-login-screen {
+    position: fixed !important;
+    inset: 0 !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100% !important;
     height: 100vh !important;
     height: 100dvh !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 16px 12px !important;
+    box-sizing: border-box !important;
+    z-index: 9999999 !important;
   }
+
   .lamp-scene-container {
     flex-direction: column !important;
-    gap: 8px !important;
+    gap: 10px !important;
     margin: auto !important;
     width: 100% !important;
-    max-width: 360px !important;
+    max-width: 350px !important;
+    box-sizing: border-box !important;
   }
+
   .lamp-wrapper {
-    height: 120px !important;
-    width: 120px !important;
+    height: 110px !important;
+    width: 110px !important;
     margin: 0 auto !important;
     transform: scale(0.85) !important;
   }
+
   .lamp-login-card {
     width: 100% !important;
-    max-width: 350px !important;
+    max-width: 340px !important;
     margin: 0 auto !important;
-    padding: 24px 20px !important;
+    padding: 22px 18px !important;
     opacity: 1 !important;
     transform: none !important;
     pointer-events: auto !important;
     border-color: #a855f7 !important;
     box-shadow: 0 0 30px rgba(168, 85, 247, 0.4), 0 10px 25px rgba(0, 0, 0, 0.7) !important;
+    box-sizing: border-box !important;
   }
+
   .top-header {
     flex-direction: column !important;
     align-items: flex-start !important;
     gap: 10px !important;
-    padding: 12px 14px !important;
+    padding: 8px 4px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
+
+  .logo-area {
+    width: 100% !important;
+  }
+
+  .title-text h1 {
+    font-size: 1.12rem !important;
+    line-height: 1.25 !important;
+    word-break: break-word !important;
+  }
+
+  .title-text p {
+    font-size: 0.74rem !important;
+    line-height: 1.3 !important;
+  }
+
   .header-actions {
     width: 100% !important;
     flex-wrap: wrap !important;
     justify-content: flex-start !important;
-    gap: 8px !important;
+    gap: 6px !important;
   }
+
+  .header-actions .btn, .header-actions .badge {
+    font-size: 0.72rem !important;
+    padding: 5px 8px !important;
+  }
+
+  #market-notice-bar {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+    padding: 10px 12px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .indian-market-ribbon {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding: 8px 10px !important;
+    box-sizing: border-box !important;
+  }
+
+  .index-pill {
+    flex-shrink: 0 !important;
+  }
+
+  .pnl-filter-bar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    padding: 10px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .timeframe-filters {
+    width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    flex-wrap: nowrap !important;
+    padding-bottom: 4px !important;
+  }
+
+  .timeframe-filters .btn {
+    flex-shrink: 0 !important;
+  }
+
   .metrics-grid {
     grid-template-columns: repeat(2, 1fr) !important;
-    gap: 10px !important;
+    gap: 8px !important;
+    width: 100% !important;
+    min-width: 0 !important;
   }
-  .controls-bar {
+
+  .metric-card {
+    padding: 10px !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .metric-card .metric-value {
+    font-size: 1.22rem !important;
+  }
+
+  .control-panel {
     flex-direction: column !important;
     align-items: stretch !important;
     gap: 12px !important;
-  }
-  .controls-left, .controls-right {
+    padding: 12px !important;
     width: 100% !important;
-    flex-wrap: wrap !important;
-    justify-content: space-between !important;
+    box-sizing: border-box !important;
   }
+
+  .control-group {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .control-group .btn {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .slider-container {
+    width: 100% !important;
+    justify-content: space-between !important;
+    box-sizing: border-box !important;
+  }
+
+  .chart-panel {
+    padding: 10px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .chart-quick-symbols {
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding-bottom: 6px !important;
+    width: 100% !important;
+  }
+
+  .chart-quick-symbols .btn {
+    flex-shrink: 0 !important;
+  }
+
+  .chart-controls-toolbar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .chart-controls-toolbar > div {
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding-bottom: 4px !important;
+    width: 100% !important;
+  }
+
+  .chart-controls-toolbar .btn {
+    flex-shrink: 0 !important;
+  }
+
+  #native-chart-wrapper {
+    height: 290px !important;
+    width: 100% !important;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    gap: 12px !important;
+    min-width: 0 !important;
+  }
+
+  .grid-column {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .panel {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    padding: 12px 10px !important;
+    margin-bottom: 12px !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  .panel-header {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
   .table-wrapper {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch !important;
+    display: block !important;
+    box-sizing: border-box !important;
   }
-  .panel {
-    padding: 14px 12px !important;
-    margin-bottom: 14px !important;
+
+  table {
+    min-width: 580px !important;
+    width: 100% !important;
   }
 }
