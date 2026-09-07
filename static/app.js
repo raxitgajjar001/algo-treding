@@ -1335,8 +1335,13 @@ function pullLampCord() {
 
   if (isNowOn) {
     setTimeout(() => {
+      const userEl = document.getElementById('lamp-username');
       const pwdInput = document.getElementById('lamp-password');
-      if (pwdInput) pwdInput.focus();
+      if (userEl && !userEl.value.trim()) {
+        userEl.focus();
+      } else if (pwdInput) {
+        pwdInput.focus();
+      }
     }, 350);
   }
 }
@@ -1373,6 +1378,10 @@ function showLoginScreen() {
     screen.classList.remove('lamp-on'); // START IN OFF (DARK) STATE WITH DORI VISIBLE!
     screen.style.setProperty('display', 'flex', 'important');
     screen.style.setProperty('visibility', 'visible', 'important');
+    const userEl = document.getElementById('lamp-username');
+    if (userEl) userEl.value = '';
+    const pwdInput = document.getElementById('lamp-password');
+    if (pwdInput) pwdInput.value = '';
   }
 }
 
@@ -1838,8 +1847,14 @@ function copyMobileLink() {
 
 // Initial loader guarded by Authentication
 window.onload = async () => {
+  if ('serviceWorker' in navigator) {
+    try {
+      navigator.serviceWorker.register('/static/sw.js');
+    } catch (e) {}
+  }
   const isAuth = await checkAuthentication();
   if (isAuth) {
     startDashboardLoops();
   }
 };
+

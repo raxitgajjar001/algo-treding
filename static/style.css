@@ -712,7 +712,7 @@ tr:hover {
   opacity: 1;
 }
 
-/* Pull Cord (Dori - Interactive with Golden Bead & Hint) */
+/* Pull Cord (Dori - Minimalist Sleek String Switch) */
 .lamp-cord-group {
   cursor: pointer;
   transform-origin: 98px 150px;
@@ -721,12 +721,7 @@ tr:hover {
 
 .lamp-cord-group:hover .cord-line {
   stroke: #ffffff;
-  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.8));
-}
-
-.lamp-cord-group:hover .cord-bead {
-  filter: drop-shadow(0 0 14px rgba(250, 204, 21, 1));
-  transform: scale(1.15);
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.9));
 }
 
 .lamp-cord-group.pulling {
@@ -734,45 +729,9 @@ tr:hover {
 }
 
 .cord-line {
-  stroke: #cbd5e1;
+  stroke: #e2e8f0;
   transition: stroke 0.2s ease, filter 0.2s ease;
-}
-
-.cord-bead {
-  filter: drop-shadow(0 0 8px rgba(250, 204, 21, 0.8));
-  transition: filter 0.2s ease, transform 0.2s ease;
-  transform-origin: 98px 231px;
-}
-
-@keyframes pulseHint {
-  0%, 100% { transform: translateY(0); opacity: 0.95; }
-  50% { transform: translateY(-7px); opacity: 1; }
-}
-
-.pull-cord-hint {
-  position: absolute;
-  top: 232px;
-  left: 28px;
-  background: rgba(15, 23, 42, 0.92);
-  border: 1.5px solid #facc15;
-  color: #fde047;
-  font-size: 0.76rem;
-  font-weight: 700;
-  padding: 4px 11px;
-  border-radius: 20px;
-  cursor: pointer;
-  box-shadow: 0 0 16px rgba(250, 204, 21, 0.45);
-  animation: pulseHint 1.6s infinite ease-in-out;
-  white-space: nowrap;
-  pointer-events: auto;
-  transition: opacity 0.3s ease, transform 0.3s ease;
-  z-index: 20;
-}
-
-.lamp-on .pull-cord-hint {
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(10px);
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.5));
 }
 
 /* Login Card (Right Side) */

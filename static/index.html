@@ -7,7 +7,17 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>INDstocks Algo Trading Platform</title>
-  <link rel="stylesheet" href="/static/style.css?v=20260907_20" />
+  
+  <!-- iOS Home Screen App (PWA) Tags -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="INDstocks" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png?v=20260907_25" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon.png?v=20260907_25" />
+  <link rel="manifest" href="/static/manifest.json" />
+  <meta name="theme-color" content="#0f172a" />
+
+  <link rel="stylesheet" href="/static/style.css?v=20260907_25" />
   <script src="/static/lightweight-charts.js"></script>
 </head>
 <body>
@@ -470,11 +480,11 @@
           <!-- Stand Pole -->
           <rect x="116" y="148" width="8" height="138" rx="4" fill="url(#poleGrad)" />
 
-          <!-- Pull Cord / Dori (Interactive Pull Switch with Golden Bead) -->
-          <g id="lamp-cord" class="lamp-cord-group" onclick="pullLampCord()" title="દોરી ખેંચો (Pull Cord to turn ON/OFF)">
-            <line x1="98" y1="150" x2="98" y2="225" stroke="#cbd5e1" stroke-width="3.5" stroke-linecap="round" class="cord-line" />
-            <circle cx="98" cy="231" r="8" fill="#facc15" stroke="#ca8a04" stroke-width="1.5" class="cord-bead" />
-            <circle cx="96" cy="229" r="2.5" fill="#fef08a" opacity="0.9" />
+          <!-- Pull Cord / Dori (Interactive Sleek Pull String Switch) -->
+          <g id="lamp-cord" class="lamp-cord-group" onclick="pullLampCord()">
+            <!-- Broad transparent line for easy mobile touch target -->
+            <line x1="98" y1="150" x2="98" y2="232" stroke="transparent" stroke-width="32" stroke-linecap="round" />
+            <line x1="98" y1="150" x2="98" y2="232" stroke="#e2e8f0" stroke-width="3.5" stroke-linecap="round" class="cord-line" />
           </g>
 
           <!-- Lamp Shade Top Cap -->
@@ -505,11 +515,6 @@
             <path d="M 115 110 Q 120 118 125 110 Q 120 106 115 110 Z" fill="#fb7185" />
           </g>
         </svg>
-
-        <!-- Interactive Bouncing Pull-Cord Hint Badge -->
-        <div id="pull-cord-hint" class="pull-cord-hint" onclick="pullLampCord()">
-          👇 દોરી ખેંચો (Pull Cord)
-        </div>
       </div>
 
       <!-- 2. The Login Card (Right) -->
@@ -519,7 +524,7 @@
         <form onsubmit="submitLampLogin(event)">
           <div class="lamp-input-group">
             <label>User ID</label>
-            <input type="text" id="lamp-username" required placeholder="Enter User ID" autocomplete="off" value="Raxit@5001" />
+            <input type="text" id="lamp-username" required placeholder="Enter User ID" autocomplete="off" value="" />
           </div>
           <div class="lamp-input-group">
             <label>Password</label>
@@ -660,6 +665,6 @@
     </div>
   </div>
 
-  <script src="/static/app.js?v=20260907_20"></script>
+  <script src="/static/app.js?v=20260907_25"></script>
 </body>
 </html>

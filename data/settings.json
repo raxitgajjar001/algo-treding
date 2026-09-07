@@ -1,7 +1,7 @@
 {
   "engine_active": false,
   "mode": "PAPER",
-  "capital_allocation_pct": 1,
+  "capital_allocation_pct": 25,
   "max_daily_loss": 2000.0,
   "max_concurrent_trades": 5,
   "intraday_target_pct": 2.0,
