@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>INDstocks Algo Trading Platform</title>
-  <link rel="stylesheet" href="/static/style.css?v=20260907_15" />
+  <link rel="stylesheet" href="/static/style.css?v=20260907_20" />
   <script src="/static/lightweight-charts.js"></script>
 </head>
 <body>
@@ -431,7 +431,7 @@
   </div>
 
   <!-- Night Lamp Animated Login Screen (Instagram Viral Interactive Pull-Cord Switch) -->
-  <div id="lamp-login-screen" class="lamp-on" style="display: flex;">
+  <div id="lamp-login-screen" style="display: flex;">
     <div class="lamp-scene-container">
       
       <!-- 1. The Interactive Lamp (Left) -->
@@ -470,9 +470,11 @@
           <!-- Stand Pole -->
           <rect x="116" y="148" width="8" height="138" rx="4" fill="url(#poleGrad)" />
 
-          <!-- Pull Cord / Dori (Interactive Pull Switch - Clean vertical string, no dot) -->
-          <g id="lamp-cord" class="lamp-cord-group" onclick="pullLampCord()" title="Click to turn ON/OFF">
-            <rect x="96.5" y="150" width="3.5" height="72" rx="1.75" class="cord-line" fill="#cbd5e1" />
+          <!-- Pull Cord / Dori (Interactive Pull Switch with Golden Bead) -->
+          <g id="lamp-cord" class="lamp-cord-group" onclick="pullLampCord()" title="દોરી ખેંચો (Pull Cord to turn ON/OFF)">
+            <line x1="98" y1="150" x2="98" y2="225" stroke="#cbd5e1" stroke-width="3.5" stroke-linecap="round" class="cord-line" />
+            <circle cx="98" cy="231" r="8" fill="#facc15" stroke="#ca8a04" stroke-width="1.5" class="cord-bead" />
+            <circle cx="96" cy="229" r="2.5" fill="#fef08a" opacity="0.9" />
           </g>
 
           <!-- Lamp Shade Top Cap -->
@@ -503,6 +505,11 @@
             <path d="M 115 110 Q 120 118 125 110 Q 120 106 115 110 Z" fill="#fb7185" />
           </g>
         </svg>
+
+        <!-- Interactive Bouncing Pull-Cord Hint Badge -->
+        <div id="pull-cord-hint" class="pull-cord-hint" onclick="pullLampCord()">
+          👇 દોરી ખેંચો (Pull Cord)
+        </div>
       </div>
 
       <!-- 2. The Login Card (Right) -->
@@ -512,7 +519,7 @@
         <form onsubmit="submitLampLogin(event)">
           <div class="lamp-input-group">
             <label>User ID</label>
-            <input type="text" id="lamp-username" required placeholder="Enter User ID" autocomplete="off" value="" />
+            <input type="text" id="lamp-username" required placeholder="Enter User ID" autocomplete="off" value="Raxit@5001" />
           </div>
           <div class="lamp-input-group">
             <label>Password</label>
@@ -653,6 +660,6 @@
     </div>
   </div>
 
-  <script src="/static/app.js?v=20260907_15"></script>
+  <script src="/static/app.js?v=20260907_20"></script>
 </body>
 </html>

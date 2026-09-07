@@ -1370,40 +1370,18 @@ function showLoginScreen() {
   if (screen) {
     screen.classList.remove('hidden-screen');
     screen.classList.add('visible-flex');
-    screen.classList.add('lamp-on');
+    screen.classList.remove('lamp-on'); // START IN OFF (DARK) STATE WITH DORI VISIBLE!
     screen.style.setProperty('display', 'flex', 'important');
     screen.style.setProperty('visibility', 'visible', 'important');
   }
 }
 
 async function checkAuthentication() {
-  // Clear any old persistent local storage tokens so opening platform ALWAYS starts at the lamp screen
+  // Always start at the viral interactive night lamp pull-cord screen
+  sessionStorage.removeItem('algo_auth_token');
   localStorage.removeItem('algo_auth_token');
-  
-  const token = sessionStorage.getItem('algo_auth_token');
-  
-  if (!token) {
-    showLoginScreen();
-    return false;
-  }
-  try {
-    const res = await fetch(`/api/auth/check?token=${encodeURIComponent(token)}`);
-    const data = await res.json();
-    if (data.authenticated) {
-      showDashboardScreen();
-      const savedUser = sessionStorage.getItem('algo_auth_user') || 'Raxit@5001';
-      const userBadge = document.getElementById('user-badge');
-      if (userBadge) userBadge.textContent = `👤 ${savedUser}`;
-      return true;
-    } else {
-      sessionStorage.removeItem('algo_auth_token');
-      showLoginScreen();
-      return false;
-    }
-  } catch (e) {
-    showDashboardScreen();
-    return true; // Fallback in case of brief network disconnect
-  }
+  showLoginScreen();
+  return false;
 }
 
 async function submitLampLogin(e) {
