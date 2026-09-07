@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="gu">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>INDstocks Algo Trading Platform</title>
+  <link rel="stylesheet" href="/static/style.css?v=20260907_6" />
+  <script src="/static/lightweight-charts.js"></script>
+</head>
+<body>
+  <!-- Header -->
+  <header class="top-header">
+    <div class="logo-area">
+      <div class="logo-icon">IND</div>
+      <div class="title-text">
+        <h1>INDstocks Algo Trading Platform</h1>
+        <p>ઓટોમેટિક માર્કેટ સ્કેનર & મલ્ટિ-એકાઉન્ટ એક્ઝિક્યુશન સિસ્ટમ</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <span id="market-status-badge" class="badge badge-bearish" style="font-weight: 800; font-size: 0.82rem;">🔴 MARKET CLOSED</span>
+      <span id="mode-badge" class="badge badge-paper">PAPER TRADING (ડેમો મોડ)</span>
+      <button class="btn btn-secondary" onclick="toggleMode()">🔄 Switch Mode (મોડ બદલો)</button>
+      <button class="btn btn-secondary" onclick="openMobileConnectModal()" style="font-size:0.75rem; padding:6px 11px; background:#EFF6FF; border-color:#93C5FD; color:#1D4ED8; font-weight:700;">📱 મોબાઈલ લિંક</button>
+      <button class="btn btn-secondary" onclick="openChangePasswordModal()" style="font-size:0.75rem; padding:6px 10px;">🔑 પાસવર્ડ બદલો</button>
+      <button class="btn btn-secondary" onclick="logoutUser()" style="font-size:0.75rem; padding:6px 10px; color:#B91C1C; border-color:#FCA5A5;">🚪 Logout</button>
+      <button class="btn btn-danger" onclick="emergencyKill()">🚨 Emergency Kill</button>
+    </div>
+  </header>
+
+  <!-- 100% Indian Market Live Indices Ticker Ribbon -->
+  
+  <!-- Live Market Hours Notice Banner -->
+  <div id="market-notice-bar" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: #FEF2F2; border: 1.5px solid #FCA5A5; border-radius: 8px; margin-bottom: 16px; color: #991B1B; font-size: 0.85rem; font-weight: 700;">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span style="font-size: 1.1rem;">🕒</span>
+      <span id="market-notice-text">ભારતીય શેરબજાર (NSE/BSE) બપોરે 03:30 વાગ્યે બંધ થઈ ગયું છે. તમામ ભાવો આજના ક્લોઝિંગ લેવલ પર ફ્રીઝ કરેલા છે. આગામી સત્ર આવતીકાલે સવારે 09:15 વાગ્યે શરૂ થશે.</span>
+    </div>
+    <span id="clock-ist" style="font-size: 0.85rem; background: #FFFFFF; padding: 3px 10px; border-radius: 6px; border: 1px solid #FCA5A5; color: #B91C1C; font-weight: 800;">--:--:-- IST</span>
+  </div>
+
+  <div class="indian-market-ribbon" style="display: flex; gap: 12px; overflow-x: auto; margin-bottom: 18px; padding: 10px 14px; background: #FFFFFF; border: 1.5px solid #CBD5E1; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+    <div class="index-pill" onclick="switchChart('NSE:NIFTY')" style="cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 4px 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px;">
+      <span style="font-weight: 800; color: #0F172A; font-size: 0.85rem;">🇮🇳 NIFTY 50</span>
+      <span id="ticker-nifty" style="font-weight: 700; color: #15803D; font-size: 0.85rem;">₹25,182.40 (+0.48%)</span>
+    </div>
+    <div class="index-pill" onclick="switchChart('NSE:BANKNIFTY')" style="cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 4px 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px;">
+      <span style="font-weight: 800; color: #0F172A; font-size: 0.85rem;">🇮🇳 BANK NIFTY</span>
+      <span id="ticker-banknifty" style="font-weight: 700; color: #15803D; font-size: 0.85rem;">₹51,435.10 (+0.65%)</span>
+    </div>
+    <div class="index-pill" onclick="switchChart('BSE:SENSEX')" style="cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 4px 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px;">
+      <span style="font-weight: 800; color: #0F172A; font-size: 0.85rem;">🇮🇳 SENSEX</span>
+      <span id="ticker-sensex" style="font-weight: 700; color: #15803D; font-size: 0.85rem;">₹82,360.80 (+0.42%)</span>
+    </div>
+    <div class="index-pill" onclick="switchChart('NSE:FINNIFTY')" style="cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 4px 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px;">
+      <span style="font-weight: 800; color: #0F172A; font-size: 0.85rem;">🇮🇳 FIN NIFTY</span>
+      <span id="ticker-finnifty" style="font-weight: 700; color: #15803D; font-size: 0.85rem;">₹23,910.50 (+0.52%)</span>
+    </div>
+    <div class="index-pill" onclick="switchChart('NSE:INDIAVIX')" style="cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 4px 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px;">
+      <span style="font-weight: 800; color: #0F172A; font-size: 0.85rem;">🇮🇳 INDIA VIX</span>
+      <span id="ticker-vix" style="font-weight: 700; color: #B45309; font-size: 0.85rem;">13.42 (-2.1%)</span>
+    </div>
+  </div>
+
+
+  
+  <!-- PnL Performance Timeframe Filter & Reset Bar -->
+  <div style="display: flex; justify-content: space-between; align-items: center; background: #FFFFFF; border: 1.5px solid #CBD5E1; border-radius: 10px; padding: 10px 16px; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+      <span style="font-size: 0.82rem; font-weight: 800; color: #0F172A;">📊 નફો/નુકસાન સમયગાળો (P&L Filter):</span>
+      <div class="timeframe-filters" style="display: flex; gap: 5px; flex-wrap: wrap;">
+        <button id="filter-btn-1" class="btn btn-primary" style="padding: 3px 10px; font-size: 0.75rem;" onclick="applyPnlFilter(1)">1D (આજે)</button>
+        <button id="filter-btn-2" class="btn btn-secondary" style="padding: 3px 10px; font-size: 0.75rem;" onclick="applyPnlFilter(2)">2D (2 દિવસ)</button>
+        <button id="filter-btn-7" class="btn btn-secondary" style="padding: 3px 10px; font-size: 0.75rem;" onclick="applyPnlFilter(7)">7D (1 અઠવાડિયું)</button>
+        <button id="filter-btn-30" class="btn btn-secondary" style="padding: 3px 10px; font-size: 0.75rem;" onclick="applyPnlFilter(30)">1M (1 મહિનો)</button>
+        <button id="filter-btn-90" class="btn btn-secondary" style="padding: 3px 10px; font-size: 0.75rem;" onclick="applyPnlFilter(90)">3M (3 મહિના)</button>
+        <button id="filter-btn-180" class="btn btn-secondary" style="padding: 3px 10px; font-size: 0.75rem;" onclick="applyPnlFilter(180)">6M (6 મહિના)</button>
+        <button id="filter-btn-365" class="btn btn-secondary" style="padding: 3px 10px; font-size: 0.75rem;" onclick="applyPnlFilter(365)">12M (1 વર્ષ)</button>
+      </div>
+    </div>
+    <div>
+      <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem; color: #DC2626; border-color: #FCA5A5;" onclick="resetAllPnLToZero()">
+        🔄 Reset to ₹0 (બધું 0 કરો)
+      </button>
+    </div>
+  </div>
+
+  <!-- KPI Metrics -->
+  <section class="metrics-grid">
+    <div id="pnl-card" class="metric-card pnl-card">
+      <div class="metric-label">કુલ નફો / નુકસાન (Net P&L)</div>
+      <div id="net-pnl" class="metric-value profit">₹0.00</div>
+      <div class="metric-sub">
+        <span id="realized-pnl">Realized: ₹0</span> • <span id="unrealized-pnl">Open: ₹0</span>
+      </div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-label">ચોકસાઈ / વિન રેટ (Win Rate)</div>
+      <div id="win-rate" class="metric-value" style="color: #3B82F6;">0%</div>
+      <div id="win-counts" class="metric-sub">0 Trades Executed</div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-label">કુલ સક્રિય મૂડી (Total Capital)</div>
+      <div id="managed-capital" class="metric-value" style="color: #F59E0B;">₹1,00,000</div>
+      <div class="metric-sub">બધા સક્રિય એકાઉન્ટ્સનું બેલેન્સ</div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-label">ટ્રેડ દીઠ મૂડી % (Alloc / Trade)</div>
+      <div id="metric-alloc-pct" class="metric-value" style="color: #10B981;">10%</div>
+      <div class="metric-sub">એક ટ્રેડમાં નિર્ધારિત ટકાવારી</div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-label">ખુલ્લા સોદા (Active Trades)</div>
+      <div id="active-trades-count" class="metric-value">0</div>
+      <div class="metric-sub">3:15 PM અથવા Target પર Auto-Exit</div>
+    </div>
+  </section>
+
+  <!-- Control & Settings Bar -->
+  <section class="control-panel">
+    <div class="control-group">
+      <button id="btn-toggle-engine" class="btn btn-primary" onclick="toggleEngine()">
+        ▶️ Start Auto-Trading (ઓટો ટ્રેડિંગ શરૂ કરો)
+      </button>
+      <span id="engine-subtext" style="font-size: 0.82rem; color: #64748B; font-weight: 600;">
+        (સિસ્ટમ આપોઆપ સારા સોદા શોધીને BUY અને SELL કરશે)
+      </span>
+    </div>
+
+    <div class="control-group">
+      <div class="slider-container">
+        <label for="capital-pct-slider">ટ્રેડ દીઠ કેપિટલ %:</label>
+        <input type="range" id="capital-pct-slider" min="1" max="100" step="1" value="10" onchange="updateCapitalPct(this.value)" oninput="document.getElementById('capital-pct-val').textContent = this.value + '%'" />
+        <span id="capital-pct-val" class="slider-value">10%</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main Grid -->
+  
+  <!-- Live Interactive Chart Section -->
+    <!-- 100% Native High-Performance Indian Candlestick Chart -->
+  <section class="panel chart-panel" style="margin-bottom: 20px; padding: 16px; background: #FFFFFF;">
+    <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+      <div class="panel-title" style="font-size: 1.05rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+        📈 લાઈવ કેન્ડલસ્ટિક ચાર્ટ (Live Candlestick Chart)
+        <span id="current-chart-symbol" style="font-size: 0.85rem; background: #DCFCE7; color: #15803D; padding: 3px 12px; border-radius: 12px; font-weight: 800; border: 1px solid #86EFAC;">🇮🇳 NIFTY 50</span>
+        <span id="current-chart-ltp" style="font-size: 0.95rem; font-weight: 800; color: #0F172A;">₹23,779.15</span>
+        <span id="rsi-indicator-badge" style="font-size: 0.78rem; font-weight: 700; background: #FAF5FF; color: #7E22CE; padding: 3px 10px; border-radius: 6px; border: 1px solid #D8B4FE; display: none;">RSI (14): --</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+        <button id="btn-fullscreen" class="btn btn-secondary" style="padding: 5px 14px; font-size: 0.78rem; font-weight: 800; border: 1.5px solid #CBD5E1; display: flex; align-items: center; gap: 5px;" onclick="toggleFullscreenChart()">
+          ⛶ મોટો ચાર્ટ (Full Screen)
+        </button>
+      </div>
+    </div>
+    
+    <div class="chart-quick-symbols" style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px;">
+      <button id="sym-btn-NIFTY" class="btn btn-primary" style="padding: 4px 12px; font-size: 0.78rem;" onclick="switchChart('NIFTY')">🇮🇳 NIFTY 50</button>
+      <button id="sym-btn-BANKNIFTY" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.78rem;" onclick="switchChart('BANKNIFTY')">🇮🇳 Bank Nifty</button>
+      <button id="sym-btn-SENSEX" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.78rem;" onclick="switchChart('SENSEX')">🇮🇳 Sensex</button>
+      <button id="sym-btn-RELIANCE" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.78rem;" onclick="switchChart('RELIANCE')">Reliance</button>
+      <button id="sym-btn-HDFCBANK" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.78rem;" onclick="switchChart('HDFCBANK')">HDFC Bank</button>
+      <button id="sym-btn-SBIN" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.78rem;" onclick="switchChart('SBIN')">State Bank (SBI)</button>
+      <button id="sym-btn-TATAMOTORS" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.78rem;" onclick="switchChart('TATAMOTORS')">Tata Motors</button>
+      <button id="sym-btn-ICICIBANK" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.78rem;" onclick="switchChart('ICICIBANK')">ICICI Bank</button>
+      <button id="sym-btn-TCS" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.78rem;" onclick="switchChart('TCS')">TCS</button>
+      <button id="sym-btn-INFY" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.78rem;" onclick="switchChart('INFY')">Infosys</button>
+    </div>
+
+    <!-- INDmoney Pro Chart Controls Toolbar -->
+    <div style="display: flex; justify-content: space-between; align-items: center; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 6px 12px; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+      <!-- Timeframe Selector -->
+      <div style="display: flex; align-items: center; gap: 4px;">
+        <span style="font-size: 0.75rem; font-weight: 700; color: #64748B; margin-right: 4px;">TIMING:</span>
+        <button id="tf-1m" class="btn btn-secondary" style="padding: 3px 8px; font-size: 0.72rem;" onclick="switchTimeframe('1m')">1m</button>
+        <button id="tf-5m" class="btn btn-primary" style="padding: 3px 8px; font-size: 0.72rem;" onclick="switchTimeframe('5m')">5m</button>
+        <button id="tf-15m" class="btn btn-secondary" style="padding: 3px 8px; font-size: 0.72rem;" onclick="switchTimeframe('15m')">15m</button>
+        <button id="tf-30m" class="btn btn-secondary" style="padding: 3px 8px; font-size: 0.72rem;" onclick="switchTimeframe('30m')">30m</button>
+        <button id="tf-1h" class="btn btn-secondary" style="padding: 3px 8px; font-size: 0.72rem;" onclick="switchTimeframe('1h')">1h</button>
+        <button id="tf-1d" class="btn btn-secondary" style="padding: 3px 8px; font-size: 0.72rem;" onclick="switchTimeframe('1d')">1D</button>
+      </div>
+
+      <!-- Indicators Toggles -->
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <span style="font-size: 0.75rem; font-weight: 700; color: #64748B; margin-right: 4px;">INDICATORS:</span>
+        <button id="btn-ind-ema9" class="btn btn-primary" style="padding: 3px 9px; font-size: 0.72rem;" onclick="toggleIndicator('ema9')">EMA 9 (Blue)</button>
+        <button id="btn-ind-ema21" class="btn btn-primary" style="padding: 3px 9px; font-size: 0.72rem;" onclick="toggleIndicator('ema21')">EMA 21 (Orange)</button>
+        <button id="btn-ind-rsi" class="btn btn-secondary" style="padding: 3px 9px; font-size: 0.72rem;" onclick="toggleIndicator('rsi')">RSI (14)</button>
+        <button id="btn-ind-vol" class="btn btn-primary" style="padding: 3px 9px; font-size: 0.72rem;" onclick="toggleIndicator('vol')">Volume</button>
+        <button id="btn-chart-type" class="btn btn-secondary" style="padding: 3px 9px; font-size: 0.72rem;" onclick="toggleChartType()">Candles</button>
+      </div>
+    </div>
+
+    <div id="native-chart-wrapper" style="position: relative; height: 440px; width: 100%; border-radius: 8px 8px 0 0; border: 1.5px solid #CBD5E1; overflow: hidden; background: #FFFFFF;">
+      <div id="lightweight_chart_container" style="width: 100%; height: 100%;"></div>
+    </div>
+
+    <!-- Dedicated INDmoney-Style RSI Sub-Chart Pane -->
+    <div id="rsi-subchart-wrapper" style="display: none; height: 110px; width: 100%; border: 1.5px solid #CBD5E1; border-top: none; border-radius: 0 0 8px 8px; background: #FAF5FF; position: relative;">
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 3px 12px; background: #F3E8FF; border-bottom: 1px solid #E9D5FF;">
+        <span style="font-size: 0.74rem; font-weight: 800; color: #7E22CE;">🟣 RSI (14) - રિલેટિવ સ્ટ્રેન્થ ઇન્ડેક્સ (ઓસિલેટર)</span>
+        <div style="display: flex; align-items: center; gap: 10px; font-size: 0.72rem;">
+          <span style="color: #DC2626; font-weight: 700;">ઓવરબોટ: 70</span>
+          <span style="color: #64748B; font-weight: 700;">મધ્યરેખા: 50</span>
+          <span style="color: #16A34A; font-weight: 700;">ઓવરસોલ્ડ: 30</span>
+          <span id="rsi-val-badge" style="font-weight: 800; color: #7E22CE; background: #FFFFFF; padding: 1px 7px; border-radius: 4px; border: 1px solid #D8B4FE;">RSI: --</span>
+        </div>
+      </div>
+      <div id="rsi_chart_container" style="width: 100%; height: 85px;"></div>
+    </div>
+  </section>
+
+  <div class="dashboard-grid">
+    <!-- Left Column -->
+    <div class="grid-column">
+      <!-- Opportunity Radar -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            🎯 સ્માર્ટ માર્કેટ સ્કેનર (Live Opportunity Radar)
+          </div>
+          <span style="font-size:0.75rem; color:#9CA3AF;">Auto-refreshing every 6s</span>
+        </div>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>સ્ટોક / સિમ્બોલ</th>
+                <th>કિંમત (LTP)</th>
+                <th>Confidence Score</th>
+                <th>ટ્રેડ પ્રકાર</th>
+                <th>Target (નફો)</th>
+                <th>Stop Loss (રક્ષણ)</th>
+                <th>સ્થિતિ</th>
+              </tr>
+            </thead>
+            <tbody id="scanner-table-body">
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Active Trades -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            ⚡ સક્રિય સોદા (Live Active Trades) <span id="active-trades-badge" class="badge-count">0</span>
+          </div>
+          <span style="font-size:0.72rem; color:#10B981;">Intraday (3:15 PM Exit) & 2-7 Day Short Swing</span>
+        </div>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>સિમ્બોલ / એકાઉન્ટ</th>
+                <th>પ્રકાર</th>
+                <th>જથ્થો (Qty)</th>
+                <th>ખરીદ ભાવ</th>
+                <th>હાલનો ભાવ</th>
+                <th>લાઇવ નફો/નુકસાન</th>
+                <th>ટાર્ગેટ / SL</th>
+                <th>એક્શન</th>
+              </tr>
+            </thead>
+            <tbody id="active-trades-body">
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column -->
+    <div class="grid-column">
+      <!-- Multi-Account Manager -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            👥 જોડાયેલા ડિમેટ એકાઉન્ટ્સ (Connected Accounts)
+          </div>
+          <button class="btn btn-secondary" style="padding:4px 10px; font-size:0.75rem;" onclick="openAddAccountModal()">
+            + Add Account (બીજું એકાઉન્ટ જોડો)
+          </button>
+        </div>
+        <div id="accounts-container">
+        </div>
+      </div>
+
+      <!-- Live News & Sentiment Catcher (100% Gujarati) -->
+      <div class="panel">
+        <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
+          <div class="panel-title">
+            📰 તાજા બજાર સમાચાર (100% ગુજરાતીમાં)
+          </div>
+          <button class="btn btn-secondary" style="padding: 3px 10px; font-size: 0.72rem; font-weight: 700; border: 1px solid #CBD5E1;" onclick="refreshNewsNow()">
+            🔄 હમણાં અપડેટ કરો (Live)
+          </button>
+        </div>
+        <div id="news-container">
+        </div>
+      </div>
+
+      <!-- Execution Logs -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            📝 સિસ્ટમ એક્ટિવિટી & સેફ્ટી લોગ્સ
+          </div>
+        </div>
+        <div id="log-stream" class="log-stream">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Completed Trades & Daily Trading Journal (સોદાનો દૈનિક ઇતિહાસ) -->
+  <div class="panel" style="margin-top: 15px;">
+    <div class="panel-header" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px;">
+      <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <div class="panel-title" style="margin-bottom: 0;">
+          📜 પૂર્ણ થયેલા સોદાઓની વિગતવાર ડાયરી (Trade History & Daily Journal)
+        </div>
+        <span id="history-count-badge" class="badge-count">0 Trades</span>
+        <span id="history-pnl-badge" style="font-size: 0.8rem; font-weight: 700; padding: 3px 10px; border-radius: 6px; background: #F1F5F9; color: #334155; border: 1px solid #CBD5E1;">
+          Realized P&L: ₹0.00
+        </span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <div class="btn-group" style="display: flex; background: #F1F5F9; border-radius: 6px; padding: 2px; border: 1px solid #CBD5E1;">
+          <button id="btn-hist-today" class="btn btn-secondary" style="padding: 4px 12px; font-size: 0.75rem; border: none; background: #FFFFFF; font-weight: 700; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);" onclick="setHistoryFilter('today')">
+            આજના સોદા (Today)
+          </button>
+          <button id="btn-hist-all" class="btn btn-secondary" style="padding: 4px 12px; font-size: 0.75rem; border: none; background: transparent; color: #64748B; border-radius: 4px;" onclick="setHistoryFilter('all')">
+            બધા સોદા (All)
+          </button>
+        </div>
+        <button class="btn btn-secondary" style="padding: 5px 12px; font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; gap: 6px; border: 1px solid #CBD5E1;" onclick="exportTradesCSV()">
+          📥 Excel / CSV ડાઉનલોડ
+        </button>
+        <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 0.75rem;" onclick="fetchTradeHistory()" title="રીફ્રેશ કરો">
+          🔄
+        </button>
+      </div>
+    </div>
+    <div class="table-wrapper" style="max-height: 420px; overflow-y: auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>તારીખ & સમય</th>
+            <th>શેર / એકાઉન્ટ</th>
+            <th>પ્રકાર</th>
+            <th>જથ્થો (Qty)</th>
+            <th>ખરીદ ભાવ (Buy)</th>
+            <th>વેચાણ ભાવ (Sell)</th>
+            <th>સમયગાળો</th>
+            <th>ચોખ્ખો નફો/નુકસાન (P&L)</th>
+            <th>વેચાણનું કારણ (Exit Reason)</th>
+          </tr>
+        </thead>
+        <tbody id="trade-history-body">
+          <tr>
+            <td colspan="9" style="text-align: center; color: #64748B; padding: 24px;">
+              હજુ કોઈ સોદો પૂર્ણ થયો નથી. માર્કેટ શરૂ થતાં ખરીદ-વેચાણની સંપૂર્ણ વિગત (કેટલામાં લીધા, કેટલામાં વેચ્યા, નફો) અહીં લાઈવ દેખાશે.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Add Account Modal -->
+  <div id="add-account-modal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>નવું એકાઉન્ટ ઉમેરો (Add Demat Account)</h3>
+        <button onclick="closeAddAccountModal()" style="background:none; border:none; color:#475569; font-size:1.4rem; cursor:pointer; font-weight:bold;">&times;</button>
+      </div>
+      <form onsubmit="submitAddAccount(event)">
+        <div class="form-group">
+          <label>એકાઉન્ટનું નામ (e.g. Family Demat):</label>
+          <input type="text" id="acc-name" required placeholder="Account Name" />
+        </div>
+        <div class="form-group">
+          <label>બ્રોકર (Broker):</label>
+          <select id="acc-broker" onchange="onBrokerChange(this.value)">
+            <option value="INDstocks">🇮🇳 INDmoney (INDstocks)</option>
+            <option value="Zerodha">🪁 Zerodha (Kite Connect)</option>
+            <option value="AngelOne">👼 Angel One (SmartAPI)</option>
+            <option value="Groww">🌱 Groww</option>
+            <option value="Upstox">📈 Upstox (Upstox Pro)</option>
+            <option value="Dhan">⚡ Dhan (DhanHQ)</option>
+            <option value="Fyers">🎯 Fyers (Fyers API)</option>
+            <option value="KotakNeo">🔴 Kotak Neo (Securities)</option>
+            <option value="ICICIDirect">🏦 ICICI Direct (Breeze)</option>
+            <option value="HDFCSky">🌤️ HDFC Sky / Securities</option>
+            <option value="MotilalOswal">💼 Motilal Oswal</option>
+            <option value="5paisa">🖐️ 5paisa (Developer API)</option>
+            <option value="AliceBlue">🔵 Alice Blue (ANT)</option>
+            <option value="Shoonya">0️⃣ Shoonya (Finvasia)</option>
+            <option value="PaytmMoney">📱 Paytm Money</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label id="lbl-acc-token">API Access Token / Key (વૈકલ્પિક for Paper):</label>
+          <input type="password" id="acc-token" placeholder="Broker API Key / Access Token" />
+        </div>
+        <div class="form-group">
+          <label>કુલ મૂડી / Capital (₹):</label>
+          <input type="number" id="acc-capital" required value="50000" />
+        </div>
+        <div class="form-group">
+          <label>ટ્રેડ દીઠ વાપરવાની ટકાવારી (Allocation %):</label>
+          <input type="number" id="acc-alloc" required value="10" min="1" max="100" />
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
+          <button type="button" class="btn btn-secondary" onclick="closeAddAccountModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Account (સેવ કરો)</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Night Lamp Animated Login Screen (Instagram Viral Interactive Pull-Cord Switch) -->
+  <div id="lamp-login-screen" style="display: none;">
+    <div class="lamp-scene-container">
+      
+      <!-- 1. The Interactive Lamp (Left) -->
+      <div class="lamp-wrapper">
+        <svg class="lamp-svg" viewBox="0 0 240 340">
+          <defs>
+            <!-- Downward Light Beam Gradient -->
+            <linearGradient id="lightBeamGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#fffef0" stop-opacity="0.35" />
+              <stop offset="65%" stop-color="#fffef0" stop-opacity="0.12" />
+              <stop offset="100%" stop-color="#fffef0" stop-opacity="0" />
+            </linearGradient>
+            <!-- 3D Stand Pole Gradient -->
+            <linearGradient id="poleGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#94a3b8" />
+              <stop offset="45%" stop-color="#f8fafc" />
+              <stop offset="100%" stop-color="#64748b" />
+            </linearGradient>
+            <!-- Base Gradient -->
+            <linearGradient id="baseGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#f8fafc" />
+              <stop offset="100%" stop-color="#cbd5e1" />
+            </linearGradient>
+          </defs>
+
+          <!-- Light Beam (Cone shining down when lamp is ON) -->
+          <polygon class="light-beam" points="60,150 180,150 240,335 0,335" fill="url(#lightBeamGrad)" />
+
+          <!-- Stand Base Shadow -->
+          <ellipse cx="120" cy="292" rx="46" ry="12" fill="#090a0f" opacity="0.6" />
+
+          <!-- Base Bevel & Surface -->
+          <ellipse cx="120" cy="289" rx="44" ry="11" fill="#64748b" />
+          <ellipse cx="120" cy="286" rx="44" ry="10" fill="url(#baseGrad)" />
+
+          <!-- Stand Pole -->
+          <rect x="116" y="148" width="8" height="138" rx="4" fill="url(#poleGrad)" />
+
+          <!-- Pull Cord / Dori (Interactive Pull Switch - Clean vertical string, no dot) -->
+          <g id="lamp-cord" class="lamp-cord-group" onclick="pullLampCord()" title="Click to turn ON/OFF">
+            <rect x="96.5" y="150" width="3.5" height="72" rx="1.75" class="cord-line" fill="#cbd5e1" />
+          </g>
+
+          <!-- Lamp Shade Top Cap -->
+          <ellipse cx="120" cy="38" rx="36" ry="7" class="lamp-rim" />
+
+          <!-- Lamp Shade Body -->
+          <path class="lamp-shade-path" d="M 82 38 L 48 150 C 48 150 65 160 120 160 C 175 160 192 150 192 150 L 158 38 Z" onclick="pullLampCord()" style="cursor: pointer;" />
+
+          <!-- Lamp Bottom Rim (Glows when ON) -->
+          <ellipse cx="120" cy="150" rx="72" ry="11" class="lamp-rim" />
+
+          <!-- Face: Sleeping (When Lamp is OFF) -->
+          <g class="face-sleeping" onclick="pullLampCord()" style="cursor: pointer;">
+            <path d="M 94 92 Q 102 98 110 92" stroke="#16181d" stroke-width="2.5" stroke-linecap="round" fill="none" />
+            <path d="M 130 92 Q 138 98 146 92" stroke="#16181d" stroke-width="2.5" stroke-linecap="round" fill="none" />
+          </g>
+
+          <!-- Face: Kawaii Joyful Smile (When Lamp is ON) -->
+          <g class="face-happy" onclick="pullLampCord()" style="cursor: pointer;">
+            <!-- Left Eye -->
+            <circle cx="102" cy="90" r="4.5" fill="#1e1828" />
+            <circle cx="103.5" cy="88.5" r="1.5" fill="#ffffff" />
+            <!-- Right Eye -->
+            <circle cx="138" cy="90" r="4.5" fill="#1e1828" />
+            <circle cx="139.5" cy="88.5" r="1.5" fill="#ffffff" />
+            <!-- Open Happy Mouth with Pink Tongue -->
+            <path d="M 113 103 Q 120 119 127 103 Z" fill="#1e1828" />
+            <path d="M 115 110 Q 120 118 125 110 Q 120 106 115 110 Z" fill="#fb7185" />
+          </g>
+        </svg>
+      </div>
+
+      <!-- 2. The Login Card (Right) -->
+      <div class="lamp-login-card">
+        <h2>Welcome Back</h2>
+        <div id="lamp-login-error" class="lamp-login-error"></div>
+        <form onsubmit="submitLampLogin(event)">
+          <div class="lamp-input-group">
+            <label>User ID</label>
+            <input type="text" id="lamp-username" required placeholder="Enter User ID" autocomplete="off" value="" />
+          </div>
+          <div class="lamp-input-group">
+            <label>Password</label>
+            <input type="password" id="lamp-password" required placeholder="Enter password" autocomplete="off" />
+          </div>
+          <button type="submit" class="btn-lamp-login">
+            Login
+          </button>
+          <div style="text-align: center; margin-top: 15px;">
+            <button type="button" onclick="openForgotPasswordModal(event)" style="background: none; border: none; color: #c084fc; font-size: 0.84rem; text-decoration: underline; font-weight: 600; cursor: pointer; padding: 4px 8px; font-family: inherit;">
+              Forgot Password?
+            </button>
+          </div>
+        </form>
+      </div>
+
+    </div>
+
+    <!-- Forgot Password Modal (2-Step Verification with Recovery PIN 030570) -->
+    <div id="forgot-password-modal" style="display: none; position: fixed; inset: 0; background: rgba(5, 7, 12, 0.88); backdrop-filter: blur(8px); align-items: center; justify-content: center; z-index: 10000050;" onclick="if(event.target===this) closeForgotPasswordModal()">
+      <div class="modal" style="max-width: 400px; width: 92%; background: #181b2a; border: 1.5px solid #a855f7; box-shadow: 0 0 45px rgba(168, 85, 247, 0.5); border-radius: 14px; color: #ffffff; padding: 24px; position: relative;">
+        <div class="modal-header" style="border-bottom: 1px solid #2d3348; padding-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+          <h3 id="forgot-modal-title" style="color: #ffffff; display: flex; align-items: center; gap: 8px; font-size: 1.15rem; margin: 0; font-weight: 700;">
+            <span>🔐</span> Reset Password
+          </h3>
+          <button type="button" onclick="closeForgotPasswordModal()" style="background:none; border:none; color:#94a3b8; font-size:1.6rem; cursor:pointer; font-weight:bold; line-height: 1; padding: 0 4px;">&times;</button>
+        </div>
+        <div id="forgot-modal-error" style="display:none; background: rgba(239, 68, 68, 0.2); border: 1.5px solid #ef4444; border-radius: 8px; padding: 9px 12px; color: #fca5a5; font-size: 0.82rem; margin-top: 14px; font-weight: 600; line-height: 1.4;"></div>
+        <div id="forgot-modal-success" style="display:none; background: rgba(34, 197, 94, 0.2); border: 1.5px solid #22c55e; border-radius: 8px; padding: 9px 12px; color: #86efac; font-size: 0.82rem; margin-top: 14px; font-weight: 600; line-height: 1.4;"></div>
+        
+        <!-- STEP 1: Verify User ID & Recovery PIN 030570 -->
+        <form id="forgot-step-1" onsubmit="verifyPinStep(event)" style="margin-top: 16px;">
+          <div class="form-group" style="margin-bottom: 14px; text-align: left;">
+            <label style="display: block; color: #cbd5e1; font-size: 0.82rem; margin-bottom: 6px; font-weight: 600;">User ID:</label>
+            <input type="text" id="forgot-user" required placeholder="Enter User ID" autocomplete="off" value="" style="width: 100%; background: #202433; border: 1px solid #33394f; border-radius: 8px; padding: 10px 12px; color: #fff; font-size: 0.9rem;" />
+          </div>
+          <div class="form-group" style="margin-bottom: 20px; text-align: left;">
+            <label style="display: block; color: #cbd5e1; font-size: 0.82rem; margin-bottom: 6px; font-weight: 600;">Recovery PIN:</label>
+            <input type="password" id="forgot-pin" required placeholder="Enter 6-digit PIN" autocomplete="off" style="width: 100%; background: #202433; border: 1px solid #33394f; border-radius: 8px; padding: 10px 12px; color: #fff; font-size: 0.9rem;" />
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:10px;">
+            <button type="button" class="btn btn-secondary" onclick="closeForgotPasswordModal()" style="background: #2d3348; color: #cbd5e1; border: none; padding: 9px 16px; border-radius: 8px; cursor: pointer; font-weight: 600;">Cancel</button>
+            <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, #a855f7, #9333ea); border: none; padding: 9px 18px; border-radius: 8px; color: white; font-weight: 700; cursor: pointer;">Verify PIN →</button>
+          </div>
+        </form>
+
+        <!-- STEP 2: Enter New Password (Only shown after PIN 030570 verified) -->
+        <form id="forgot-step-2" onsubmit="submitNewPasswordStep(event)" style="margin-top: 16px; display: none;">
+          <div class="form-group" style="margin-bottom: 14px; text-align: left;">
+            <label style="display: block; color: #cbd5e1; font-size: 0.82rem; margin-bottom: 6px; font-weight: 600;">New Password:</label>
+            <input type="password" id="forgot-new-pass" required placeholder="At least 4 characters" autocomplete="off" style="width: 100%; background: #202433; border: 1px solid #33394f; border-radius: 8px; padding: 10px 12px; color: #fff; font-size: 0.9rem;" />
+          </div>
+          <div class="form-group" style="margin-bottom: 20px; text-align: left;">
+            <label style="display: block; color: #cbd5e1; font-size: 0.82rem; margin-bottom: 6px; font-weight: 600;">Confirm Password:</label>
+            <input type="password" id="forgot-confirm-pass" required placeholder="Re-enter new password" autocomplete="off" style="width: 100%; background: #202433; border: 1px solid #33394f; border-radius: 8px; padding: 10px 12px; color: #fff; font-size: 0.9rem;" />
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:10px;">
+            <button type="button" class="btn btn-secondary" onclick="backToStep1()" style="background: #2d3348; color: #cbd5e1; border: none; padding: 9px 16px; border-radius: 8px; cursor: pointer; font-weight: 600;">← Back</button>
+            <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, #a855f7, #9333ea); border: none; padding: 9px 18px; border-radius: 8px; color: white; font-weight: 700; cursor: pointer;">Reset Password</button>
+          </div>
+        </form>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Change Password Modal -->
+  <div id="change-password-modal" class="modal-overlay" style="display: none;">
+    <div class="modal" style="max-width: 400px;">
+      <div class="modal-header">
+        <h3>🔑 ID અને પાસવર્ડ બદલો</h3>
+        <button onclick="closeChangePasswordModal()" style="background:none; border:none; color:#475569; font-size:1.4rem; cursor:pointer; font-weight:bold;">&times;</button>
+      </div>
+      <form onsubmit="submitChangePassword(event)" style="margin-top: 12px;">
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label>હાલનો પાસવર્ડ (Old Password):</label>
+          <input type="password" id="chg-old-pass" required placeholder="જૂનો પાસવર્ડ" />
+        </div>
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label>નવો યુઝર ID (New User ID):</label>
+          <input type="text" id="chg-new-user" required placeholder="નવું ID (દા.ત. hrgaj)" />
+        </div>
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label>નવો પાસવર્ડ (New Password):</label>
+          <input type="password" id="chg-new-pass" required placeholder="ઓછામાં ઓછા 4 અક્ષર" />
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:8px;">
+          <button type="button" class="btn btn-secondary" onclick="closeChangePasswordModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">સેવ કરો (Update)</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Mobile Anywhere Connect Modal -->
+  <div id="mobile-connect-modal" class="modal-overlay" style="display: none;">
+    <div class="modal" style="max-width: 440px; text-align: center;">
+      <div class="modal-header" style="justify-content: space-between;">
+        <h3 style="display: flex; align-items: center; gap: 8px; font-size: 1.05rem; color: #0F172A;">
+          📱 મોબાઈલ કનેક્ટ (ગમે ત્યાંથી ચલાવો)
+        </h3>
+        <button onclick="closeMobileConnectModal()" style="background:none; border:none; color:#475569; font-size:1.4rem; cursor:pointer; font-weight:bold;">&times;</button>
+      </div>
+      
+      <div style="padding: 6px 0;">
+        <p style="font-size: 0.83rem; color: #475569; line-height: 1.4; margin-bottom: 12px;">
+          તમે ઘરે હોવ કે બહાર, કોઈપણ સિમકાર્ડ (4G/5G) કે Wi-Fi પરથી તમારા મોબાઈલમાં આ સાઈટ સીધી ખોલી શકો છો.
+        </p>
+
+        <!-- QR Code Display -->
+        <div style="margin: 10px auto; width: 180px; height: 180px; padding: 6px; background: #FFFFFF; border: 2px solid #E2E8F0; border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+          <img id="mobile-qr-img" src="" alt="Scan QR with Phone" style="width: 164px; height: 164px; border-radius: 6px; display: block;" />
+        </div>
+        <p style="font-size: 0.74rem; color: #64748B; margin-top: 2px; font-weight: 600;">
+          📷 મોબાઈલ કેમેરાથી આ QR કોડ સ્કેન કરો
+        </p>
+
+        <!-- Link Display Box -->
+        <div style="background: #F8FAFC; border: 1.5px solid #CBD5E1; border-radius: 8px; padding: 8px 10px; margin-top: 12px; text-align: left;">
+          <div style="font-size: 0.72rem; color: #64748B; font-weight: 700; margin-bottom: 4px;">🌍 Worldwide Mobile HTTPS Link:</div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <input type="text" id="mobile-link-input" readonly value="લિંક તૈયાર થઈ રહી છે..." style="flex: 1; padding: 6px 8px; font-size: 0.78rem; font-weight: 600; background: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 6px; color: #0F172A;" />
+            <button id="btn-copy-mobile-link" class="btn btn-primary" onclick="copyMobileLink()" style="padding: 6px 10px; font-size: 0.75rem; font-weight: 700;">
+              📋 કોપી
+            </button>
+          </div>
+        </div>
+
+        <div style="background: #F0FDF4; border: 1px solid #86EFAC; border-radius: 8px; padding: 8px 10px; margin-top: 10px; text-align: left;">
+          <div style="font-size: 0.76rem; color: #166534; font-weight: 700;">
+            🛡️ ૧૦૦% પ્રાઈવેટ & પાસવર્ડ પ્રોટેક્ટેડ:
+          </div>
+          <div style="font-size: 0.72rem; color: #15803D; margin-top: 2px; line-height: 1.3;">
+            આ લિંક ફક્ત તમારા User ID (<strong>Raxit@5001</strong>) થી જ ખુલશે. અન્ય કોઈ વ્યક્તિ ખોલી શકતી નથી.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js?v=20260907_9"></script>
+</body>
+</html>
