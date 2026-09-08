@@ -739,9 +739,9 @@ def get_market_chart(symbol: str, interval: str = "5m"):
     tf_interval, tf_range = interval_map.get(interval.lower(), ("5m", "1d"))
     cache_key = f"{sym}_{tf_interval}"
 
-    # Check cache (15s)
+    # Check cache (3.5s)
     cached = CHART_CACHE.get(cache_key)
-    if cached and (now - cached["time"] < 15):
+    if cached and (now - cached["time"] < 3.5):
         return cached["data"]
 
     # Check if this is an F&O Option Contract

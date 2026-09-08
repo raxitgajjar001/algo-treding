@@ -162,7 +162,7 @@ function initRsiSubChart() {
   });
 }
 
-function renderChartData() {
+function renderChartData(isBackground = false) {
   if (!nativeChart || !allCandles || allCandles.length === 0) return;
 
   // 1. Candlestick vs Line Series
@@ -261,17 +261,19 @@ function renderChartData() {
     if (rsiBadge) rsiBadge.style.display = 'none';
   }
 
-  nativeChart.timeScale().fitContent();
+  if (!isBackground) {
+    nativeChart.timeScale().fitContent();
+  }
 }
 
-async function loadChartData(symbol, timeframe = currentTimeframe) {
+async function loadChartData(symbol, timeframe = currentTimeframe, isBackground = false) {
   const sym = symbol.replace('NSE:', '').replace('BSE:', '').toUpperCase();
   currentChartSymbol = sym;
   currentTimeframe = timeframe;
 
   const symBadge = document.getElementById('current-chart-symbol');
   const ltpElem = document.getElementById('current-chart-ltp');
-  if (symBadge) symBadge.textContent = '🇮🇳 ' + sym;
+  if (symBadge && !isBackground) symBadge.textContent = '🇮🇳 ' + sym;
 
   try {
     const res = await fetch('/api/market/chart/' + sym + '?interval=' + timeframe);
@@ -283,10 +285,10 @@ async function loadChartData(symbol, timeframe = currentTimeframe) {
       currentCandle = { ...data.candles[data.candles.length - 1] };
       
       if (ltpElem && currentCandle) {
-        ltpElem.textContent = '₹' + Number(currentCandle.close).toLocaleString('en-IN', {minimumFractionDigits: 2});
+        ltpElem.textContent = '₹' + Number(currentCandle.close).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
       }
       
-      renderChartData();
+      renderChartData(isBackground);
     }
   } catch (err) {
     console.error('Error fetching real market candles:', err);
@@ -578,26 +580,23 @@ async function fetchLiveTicks() {
       }
     }
 
-    // 3. Stream Active Candlestick on Chart in Real Time
+    // 3. Stream Active Candlestick on Chart in Real Time (< 0.5s sub-second tick)
     const currentTick = ticks[currentChartSymbol];
     if (currentTick && currentCandle && allCandles.length > 0) {
       const newClose = currentTick.ltp;
-      // Guard against wild multi-percent jumps to prevent chart bar spikes
-      if (Math.abs(newClose - currentCandle.close) / currentCandle.close < 0.012) {
-        currentCandle.close = newClose;
-        currentCandle.high = Math.max(currentCandle.high, newClose);
-        currentCandle.low = Math.min(currentCandle.low, newClose);
+      currentCandle.close = newClose;
+      if (newClose > currentCandle.high) currentCandle.high = newClose;
+      if (newClose < currentCandle.low) currentCandle.low = newClose;
 
-        if (indicatorsState.chartType === 'candles' && candleSeries) {
-          candleSeries.update(currentCandle);
-        } else if (indicatorsState.chartType === 'line' && areaSeries) {
-          areaSeries.update({ time: currentCandle.time, value: newClose });
-        }
+      if (indicatorsState.chartType === 'candles' && candleSeries) {
+        candleSeries.update(currentCandle);
+      } else if (indicatorsState.chartType === 'line' && areaSeries) {
+        areaSeries.update({ time: currentCandle.time, value: newClose });
       }
 
       const ltpElem = document.getElementById('current-chart-ltp');
       if (ltpElem) {
-        ltpElem.textContent = '₹' + Number(newClose).toLocaleString('en-IN', {minimumFractionDigits: 2});
+        ltpElem.textContent = '₹' + Number(newClose).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
       }
     }
   } catch (e) {}
@@ -2075,6 +2074,7 @@ function startDashboardLoops() {
   setInterval(() => { try { fetchActiveTrades(); } catch(e){} }, 1500);
   setInterval(() => { try { fetchStatus(); } catch(e){} }, 2000);
   setInterval(() => { try { fetchTradeHistory(); } catch(e){} }, 3000);
+  setInterval(() => { try { if (currentChartSymbol) loadChartData(currentChartSymbol, currentTimeframe, true); } catch(e){} }, 3000);
   setInterval(() => { try { fetchScanner(); } catch(e){} }, 5000);
   setInterval(() => { try { checkBrokerAndAngelStatus(); } catch(e){} }, 10000);
   setInterval(() => { try { fetchIndexCategories(); } catch(e){} }, 12000);

@@ -150,7 +150,7 @@ class AngelOneService:
         cache_key = f"{symbol.upper()}_{interval}"
         now_ts = time.time()
         cached = self.candle_cache.get(cache_key)
-        if cached and (now_ts - cached["time"] < 30):
+        if cached and (now_ts - cached["time"] < 3.5):
             return cached["data"]
 
         tokens = {
