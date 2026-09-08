@@ -261,16 +261,13 @@ function renderChartData(isBackground = false) {
     if (rsiBadge) rsiBadge.style.display = 'none';
   }
 
-  if (!isBackground) {
-    const totalBars = allCandles.length;
-    if (totalBars > 0) {
-      nativeChart.timeScale().setVisibleLogicalRange({
-        from: Math.max(0, totalBars - 60),
-        to: totalBars + 6
-      });
-    }
-    nativeChart.timeScale().scrollToRealTime();
-  }
+  nativeChart.timeScale().applyOptions({
+    barSpacing: 10,
+    rightOffset: 4,
+    fixRightEdge: true,
+    shiftVisibleRangeOnNewBar: true
+  });
+  nativeChart.timeScale().scrollToPosition(0, false);
 }
 
 async function loadChartData(symbol, timeframe = currentTimeframe, isBackground = false) {
@@ -341,8 +338,11 @@ function initNativeChart(symbol = 'NIFTY') {
       timeVisible: true,
       secondsVisible: false,
       barSpacing: 10,
-      minBarSpacing: 4,
-      rightOffset: 8
+      minBarSpacing: 3,
+      rightOffset: 4,
+      fixRightEdge: true,
+      shiftVisibleRangeOnNewBar: true,
+      lockVisibleTimeRangeOnResize: true
     }
   });
 
@@ -397,6 +397,14 @@ function initNativeChart(symbol = 'NIFTY') {
   window.addEventListener('resize', () => {
     handleChartResize();
   });
+
+  const chartWrapper = document.getElementById('native-chart-wrapper');
+  if (chartWrapper && window.ResizeObserver) {
+    const ro = new ResizeObserver(() => {
+      handleChartResize();
+    });
+    ro.observe(chartWrapper);
+  }
 }
 
 function handleChartResize() {
@@ -410,17 +418,23 @@ function handleChartResize() {
     const h = window.innerHeight - (indicatorsState.rsi ? 260 : 160);
     container.style.height = h + 'px';
     nativeChart.applyOptions({ width: w, height: h });
+    nativeChart.timeScale().scrollToPosition(0, false);
     if (rsiChart && indicatorsState.rsi) {
       const rsiContainer = document.getElementById('rsi_chart_container');
-      if (rsiContainer) rsiChart.applyOptions({ width: w });
+      if (rsiContainer) {
+        rsiChart.applyOptions({ width: w });
+        rsiChart.timeScale().scrollToPosition(0, false);
+      }
     }
   } else {
     const w = container.clientWidth > 50 ? container.clientWidth : Math.max(300, window.innerWidth - 36);
     const targetH = window.innerWidth < 640 ? 300 : 440;
     container.style.height = targetH + 'px';
     nativeChart.applyOptions({ width: w, height: targetH });
+    nativeChart.timeScale().scrollToPosition(0, false);
     if (rsiChart && indicatorsState.rsi) {
       rsiChart.applyOptions({ width: w });
+      rsiChart.timeScale().scrollToPosition(0, false);
     }
   }
 }
@@ -646,6 +660,7 @@ async function fetchLiveTicks() {
             } else if (indicatorsState.chartType === 'line' && areaSeries) {
               areaSeries.update({ time: newCandle.time, value: newClose });
             }
+            nativeChart.timeScale().scrollToPosition(0, false);
           } else {
             // Gap detected -> safely refresh chart data
             loadChartData(currentChartSymbol, currentTimeframe, true);

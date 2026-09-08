@@ -273,6 +273,10 @@ def serve_index():
     response.headers['Expires'] = '0'
     return response
 
+@app.get('/sw.js')
+def serve_sw():
+    return FileResponse(str(BASE_DIR / 'static' / 'sw.js'))
+
 @app.post('/api/auth/login')
 def login_route(payload: Dict[str, str]):
     user = payload.get('username', '').strip()
