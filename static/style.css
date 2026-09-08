@@ -607,6 +607,14 @@ tr:hover {
   box-shadow: 0 0 50px rgba(0,0,0,0.5) !important;
 }
 
+.chart-panel.fullscreen-active #tradingview-chart-wrapper {
+  height: calc(100vh - 120px) !important;
+}
+
+.chart-panel.fullscreen-active #native-chart-wrapper {
+  height: calc(100vh - 160px) !important;
+}
+
 /* ============================================================
    Night Lamp Interactive Login Screen (Instagram Viral Style)
    ============================================================ */

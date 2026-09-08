@@ -27,6 +27,7 @@
     })();
   </script>
   <script src="/static/lightweight-charts.js"></script>
+  <script src="https://s3.tradingview.com/tv.js"></script>
 </head>
 <body>
   <div id="app-dashboard" style="display: none; width: 100%; max-width: 100vw; overflow-x: hidden; box-sizing: border-box;">
@@ -227,6 +228,15 @@
         <span id="rsi-indicator-badge" style="font-size: 0.78rem; font-weight: 700; background: #FAF5FF; color: #7E22CE; padding: 3px 10px; border-radius: 6px; border: 1px solid #D8B4FE; display: none;">RSI (14): --</span>
       </div>
       <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+        <!-- Chart Engine Switcher -->
+        <div class="chart-engine-toggle" style="display: inline-flex; background: #F1F5F9; padding: 3px; border-radius: 8px; border: 1px solid #CBD5E1;">
+          <button id="engine-btn-tv" class="btn btn-primary" style="padding: 4px 12px; font-size: 0.76rem; font-weight: 800; border-radius: 6px; background: #2563EB; color: #FFFFFF;" onclick="switchChartEngine('tradingview')">
+            ⚡ TradingView Pro (ઝીરો લેગ)
+          </button>
+          <button id="engine-btn-native" class="btn btn-secondary" style="padding: 4px 12px; font-size: 0.76rem; font-weight: 700; border-radius: 6px; border: none; background: transparent; color: #64748B;" onclick="switchChartEngine('native')">
+            🔌 Angel One Native
+          </button>
+        </div>
         <button id="btn-fullscreen" class="btn btn-secondary" style="padding: 5px 14px; font-size: 0.78rem; font-weight: 800; border: 1.5px solid #CBD5E1; display: flex; align-items: center; gap: 5px;" onclick="toggleFullscreenChart()">
           ⛶ મોટો ચાર્ટ (Full Screen)
         </button>
@@ -251,16 +261,16 @@
       <!-- Timeframe Selector -->
       <div style="display: flex; align-items: center; gap: 4px; flex-wrap: wrap;">
         <span style="font-size: 0.75rem; font-weight: 700; color: #64748B; margin-right: 4px;">TIMING:</span>
-        <button id="tf-1m" class="btn btn-secondary" style="padding: 3px 8px; font-size: 0.72rem;" onclick="switchTimeframe('1m')">1m</button>
-        <button id="tf-5m" class="btn btn-primary" style="padding: 3px 8px; font-size: 0.72rem;" onclick="switchTimeframe('5m')">5m</button>
+        <button id="tf-1m" class="btn btn-primary" style="padding: 3px 8px; font-size: 0.72rem;" onclick="switchTimeframe('1m')">1m</button>
+        <button id="tf-5m" class="btn btn-secondary" style="padding: 3px 8px; font-size: 0.72rem;" onclick="switchTimeframe('5m')">5m</button>
         <button id="tf-15m" class="btn btn-secondary" style="padding: 3px 8px; font-size: 0.72rem;" onclick="switchTimeframe('15m')">15m</button>
         <button id="tf-30m" class="btn btn-secondary" style="padding: 3px 8px; font-size: 0.72rem;" onclick="switchTimeframe('30m')">30m</button>
         <button id="tf-1h" class="btn btn-secondary" style="padding: 3px 8px; font-size: 0.72rem;" onclick="switchTimeframe('1h')">1h</button>
         <button id="tf-1d" class="btn btn-secondary" style="padding: 3px 8px; font-size: 0.72rem;" onclick="switchTimeframe('1d')">1D</button>
       </div>
 
-      <!-- Indicators Toggles -->
-      <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+      <!-- Indicators Toggles (for Native mode) -->
+      <div id="native-indicators-bar" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
         <span style="font-size: 0.75rem; font-weight: 700; color: #64748B; margin-right: 4px;">INDICATORS:</span>
         <button id="btn-ind-ema9" class="btn btn-primary" style="padding: 3px 9px; font-size: 0.72rem;" onclick="toggleIndicator('ema9')">EMA 9 (Blue)</button>
         <button id="btn-ind-ema21" class="btn btn-primary" style="padding: 3px 9px; font-size: 0.72rem;" onclick="toggleIndicator('ema21')">EMA 21 (Orange)</button>
@@ -270,8 +280,13 @@
       </div>
     </div>
 
+    <!-- Official TradingView Real-Time Chart Container (Zero Delay, 100% Broker Grade) -->
+    <div id="tradingview-chart-wrapper" style="position: relative; height: 520px; width: 100%; border-radius: 8px; border: 1.5px solid #CBD5E1; overflow: hidden; background: #FFFFFF; display: block;">
+      <div id="tradingview_chart_container" style="width: 100%; height: 100%;"></div>
+    </div>
+
     <!-- Native Lightweight Chart Container (100% Free, No Popups, Live NSE Data) -->
-    <div id="native-chart-wrapper" style="position: relative; height: 450px; width: 100%; border-radius: 8px 8px 0 0; border: 1.5px solid #CBD5E1; overflow: hidden; background: #FFFFFF; display: block;">
+    <div id="native-chart-wrapper" style="position: relative; height: 450px; width: 100%; border-radius: 8px 8px 0 0; border: 1.5px solid #CBD5E1; overflow: hidden; background: #FFFFFF; display: none;">
       <div id="lightweight_chart_container" style="width: 100%; height: 100%;"></div>
     </div>
 
