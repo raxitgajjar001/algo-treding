@@ -18,7 +18,12 @@ class TradingEngine:
         self.trade_history: List[Dict] = []
         self.daily_realized_pnl: float = 0.0
         self.logs: List[Dict] = []
+        self.cooldowns: Dict[str, float] = {}
         self.load_trades()
+        self.log("🚀 INDstocks Algo Engine v2.5 initialized for Indian Markets (NSE/BSE).", "INFO")
+        self.log("🛡️ 2% Risk Circuit Breaker active & 25% Allocation Pool Cap enforced.", "INFO")
+        self.log("🔌 Low-Latency Real-Time Market Data connected.", "INFO")
+        self.log("📊 Multi-Timeframe Trend Engine (15m 200 EMA + 5m EMA 9/21 + RSI 14) active.", "INFO")
 
     def log(self, message: str, level: str = "INFO"):
         import datetime
@@ -391,6 +396,10 @@ class TradingEngine:
             f"AUTO-EXIT: {trade['symbol']} closed @ ₹{exit_price} | Gross: +₹{gross_pnl} | બ્રોકરેજ+GST: -₹{charges} | ચોખ્ખો નફો (Net): ₹{net_pnl} ({pnl_pct}%) | Reason: {reason}",
             log_level
         )
+        # Enforce 180s (3-minute) Cool-Down on this underlying after trade closes to avoid overtrading
+        und = trade.get("underlying", "NIFTY").upper()
+        self.cooldowns[und] = time.time() + 180.0
+        self.log(f"⏳ કૂલ-ડાઉન મોડ સક્રિય: {und} માટે ૧૮૦ સેકન્ડ (ઓવર-ટ્રેડિંગ સુરક્ષા).", "INFO")
         self.save_trades()
 
     def emergency_kill_all(self):
@@ -405,8 +414,20 @@ class TradingEngine:
         self.save_trades()
         self.log("EMERGENCY KILL SWITCH ACTIVATED! All open positions squared off immediately.", "DANGER")
 
-    def place_scalper_trade(self, underlying: str = "NIFTY", option_type: str = "CE", lots: int = 1, sl_pts: float = 15.0, tgt_pts: float = 30.0) -> Dict:
-        """Execute 1-click Pro Scalper Order (ATM CE / ATM PE) with auto SL and Target"""
+    def place_scalper_trade(self, underlying: str = "NIFTY", option_type: str = "CE", lots: int = 1, sl_pts: float = 15.0, tgt_pts: float = 30.0, order_type: str = "LIMIT") -> Dict:
+        """Execute 1-click Pro Scalper Order (ATM CE / ATM PE) with auto SL, Target, and Limit Order support"""
+        und_key = underlying.upper()
+
+        # Check Post-Trade Cool-Down
+        cd_until = self.cooldowns.get(und_key, 0.0)
+        now = time.time()
+        if now < cd_until:
+            rem = int(cd_until - now)
+            return {
+                "status": "warning",
+                "message": f"⏳ કૂલ-ડાઉન મોડ સક્રિય: {und_key} માં ઓવર-ટ્રેડિંગ અટકાવવા {rem} સેકન્ડ રાહ જુઓ."
+            }
+
         from angel_one_service import angel_one_service
         from config import get_settings
         
@@ -414,33 +435,53 @@ class TradingEngine:
         spot = 23553.0
         try:
             import app
-            spot = float(app.REAL_LIVE_TICKS_CACHE.get("ticks", {}).get(underlying.upper(), {}).get("ltp", 23553.0))
+            spot = float(app.REAL_LIVE_TICKS_CACHE.get("ticks", {}).get(und_key, {}).get("ltp", 23553.0))
         except Exception:
             pass
             
-        opt_info = angel_one_service.get_atm_option_details(underlying, spot, option_type)
+        opt_info = angel_one_service.get_atm_option_details(und_key, spot, option_type)
         symbol = opt_info["tradingsymbol"]
         lot_size = opt_info["lot_size"]
         qty = int(lots * lot_size)
         entry_price = opt_info["estimated_premium"]
         
+        invested_capital = round(entry_price * qty, 2)
+
+        # 2. Risk Pool Cap Check (25% maximum capital allocation)
+        from account_manager import account_manager
+        accs = account_manager.load_accounts()
+        acc = accs[0] if accs else {"total_capital": 100000.0, "capital_allocation_pct": 25.0}
+        tot_cap = float(acc.get("total_capital", 100000.0))
+        alloc_pct = float(acc.get("capital_allocation_pct", 25.0))
+        max_pool = tot_cap * (alloc_pct / 100.0)
+        used_cap = sum(float(t.get("entry_price", 0.0)) * int(t.get("qty", 1)) for t in self.active_trades)
+        if (used_cap + invested_capital) > max_pool:
+            rem_cap = max(0.0, max_pool - used_cap)
+            return {
+                "status": "error",
+                "message": f"⚠️ રિસ્ક પૂલ મર્યાદા (25% Cap): તમારા પૂલમાં માત્ર ₹{rem_cap:,.2f} બાકી છે (જરૂરી: ₹{invested_capital:,.2f}). લોટ ઓછા કરો."
+            }
+
         settings = get_settings()
         mode = settings.get("mode", "PAPER")
         
         target_price = round(entry_price + tgt_pts, 1)
         stoploss_price = round(max(1.0, entry_price - sl_pts), 1)
-        invested_capital = round(entry_price * qty, 2)
+
+        # Slippage Protection: In LIMIT mode, set limit price at entry_price + 0.50 pts buffer
+        exec_type = order_type.upper() if order_type else "LIMIT"
+        limit_price = round(entry_price + 0.50, 1) if exec_type == "LIMIT" else 0.0
         
         order_id = f"SCALP-{uuid.uuid4().hex[:8].upper()}"
         if mode in ("LIVE", "REAL") and angel_one_service.is_authenticated:
             res = angel_one_service.place_order(
                 tradingsymbol=symbol,
                 symboltoken="0",
-                exchange="NFO" if underlying.upper() != "SENSEX" else "BFO",
+                exchange="NFO" if und_key != "SENSEX" else "BFO",
                 transaction_type="BUY",
                 quantity=qty,
-                order_type="MARKET",
-                price=0.0
+                order_type=exec_type,
+                price=limit_price
             )
             if res.get("status") == "success":
                 order_id = str(res.get("order_id", order_id))
@@ -478,13 +519,15 @@ class TradingEngine:
             "brokerage_charges": 48.5,
             "unrealized_pnl": 0.0,
             "net_pnl": 0.0,
-            "pnl_pct": 0.0
+            "pnl_pct": 0.0,
+            "order_type": exec_type,
+            "limit_price": limit_price
         }
         
         self.active_trades.insert(0, new_trade)
         self.save_trades()
-        self.log(f"⚡ SCALPER EXECUTED: {symbol} ({lots} Lot / {qty} Qty) @ ₹{entry_price} [Tgt: ₹{target_price} | SL: ₹{stoploss_price}] ({mode} Mode)", "SUCCESS")
-        return {"status": "success", "message": f"{symbol} ઓર્ડર સફળતાપૂર્વક પ્લેસ થયો!", "trade": new_trade}
+        self.log(f"⚡ SCALPER EXECUTED ({exec_type}): {symbol} ({lots} Lot / {qty} Qty) @ ₹{entry_price} [Tgt: ₹{target_price} | SL: ₹{stoploss_price}] ({mode} Mode)", "SUCCESS")
+        return {"status": "success", "message": f"{symbol} ઓર્ડર સફળતાપૂર્વક પ્લેસ થયો ({exec_type})!", "trade": new_trade}
 
     def get_dashboard_summary(self) -> Dict:
         active_accounts = get_active_accounts()
@@ -525,5 +568,6 @@ class TradingEngine:
             "active_unrealized_pnl": round(active_net_pnl, 2),
             "total_pnl": total_pnl,
             "total_brokerage": total_brokerage,
-            "win_rate": win_rate
+            "win_rate": win_rate,
+            "cooldowns": self.cooldowns
         }

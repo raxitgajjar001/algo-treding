@@ -236,10 +236,13 @@ class MarketScanner:
         min_score = settings.get("min_confidence_score", 85)
 
         # Multi-Indicator Index Trend Resolver:
-        # Check underlying index change_pct from real_prices or INDEX_CATEGORIES
+        # Check underlying index change_pct and India VIX from real_prices or INDEX_CATEGORIES
         underlying_chg = {}
+        india_vix = 11.16
         for idx in INDEX_CATEGORIES.get("key_indices", []):
             underlying_chg[idx["symbol"]] = float(idx.get("change_pct", 0.0))
+            if idx["symbol"] == "INDIAVIX":
+                india_vix = float(idx.get("base_price", 11.16))
 
         from config import DATA_DIR
         import json
@@ -251,8 +254,19 @@ class MarketScanner:
                     for k, v in rp.items():
                         if "change_pct" in v:
                             underlying_chg[k] = float(v["change_pct"])
+                    if "INDIAVIX" in rp and "price" in rp["INDIAVIX"]:
+                        india_vix = float(rp["INDIAVIX"]["price"])
             except Exception:
                 pass
+
+        # VIX Volatility Guard:
+        # When VIX < 12.0, market volatility is muted and options suffer faster theta decay.
+        # Targets are tightened to Scalper 10-12% (1:1.2 R:R) to secure gains before decay.
+        is_low_vix = india_vix < 12.0
+        target_pct = 10.5 if is_low_vix else 16.5
+        sl_pct = 8.5
+        vix_warning = "⚠️ Low VIX (< 12): ઓપ્શન બાઈંગમાં ડીકે જોખમ - નાના સ્કેલ્પિંગ ટાર્ગેટ લાગુ" if is_low_vix else ""
+        risk_reward = "1:1.2 (Scalp)" if is_low_vix else "1:2.0"
 
         results = []
 
@@ -263,11 +277,6 @@ class MarketScanner:
             is_call = item.get("option_type") == "CE" or symbol.endswith("CE") or symbol.endswith("_CE")
             is_put = item.get("option_type") == "PE" or symbol.endswith("PE") or symbol.endswith("_PE")
 
-            # Option Target & Stop-Loss (15% to 22% target, 8% to 10% SL)
-            # A 15-25 point move on NIFTY Option = ₹1100+ gross profit on 75 Qty, beating ₹48.50 brokerage easily!
-            target_pct = 16.5  # ~16.5% gain
-            sl_pct = 8.5       # ~8.5% loss (1:2 Risk-Reward)
-
             target_price = round(current_price * (1.0 + target_pct / 100.0), 2)
             sl_price = round(current_price * (1.0 - sl_pct / 100.0), 2)
 
@@ -275,6 +284,7 @@ class MarketScanner:
             sl_pts = round(current_price - sl_price, 2)
 
             # Brokerage & GST Accounting (₹20 Buy + ₹20 Sell + ₹7.20 GST + ₹1.30 STT)
+            # Mathematically exact: target_pts * lot_size (e.g. 21.25 pts * 75 Qty = ₹1,593.75 - ₹48.50 = ₹1,545.25)
             gross_expected_profit = round(target_pts * lot_size, 2)
             net_expected_profit = round(gross_expected_profit - ROUND_TRIP_CHARGES, 2)
             break_even_pts = round(ROUND_TRIP_CHARGES / lot_size, 2)
@@ -344,7 +354,12 @@ class MarketScanner:
                 "round_trip_charges": ROUND_TRIP_CHARGES,
                 "gross_expected_profit": gross_expected_profit,
                 "net_expected_profit": net_expected_profit,
-                "risk_reward": "1:2.0",
+                "risk_reward": risk_reward,
+                "delta": 0.52,
+                "delta_info": f"Delta ~0.52 ({clean_sym} 30 pt move ≈ Option ₹15.6 pt move)",
+                "india_vix": india_vix,
+                "is_low_vix": is_low_vix,
+                "vix_warning": vix_warning,
                 "max_hold": "Intraday (Auto-Exit 15:15 IST)",
                 "rsi": rsi,
                 "volume_surge": f"{vol_multiplier}x",

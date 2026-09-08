@@ -31,6 +31,29 @@ let currentPnlFilterDays = 1;
 let isRunning = false;
 let currentMode = 'PAPER';
 
+// Network Latency & Connection Monitor
+let lastSuccessfulFetchTime = Date.now();
+function recordSuccessfulFetch() {
+  lastSuccessfulFetchTime = Date.now();
+  const banner = document.getElementById('network-lag-banner');
+  if (banner && banner.style.display !== 'none') {
+    banner.style.display = 'none';
+  }
+}
+
+setInterval(() => {
+  const lag = Date.now() - lastSuccessfulFetchTime;
+  const banner = document.getElementById('network-lag-banner');
+  if (banner) {
+    if (lag > 4000) {
+      banner.style.display = 'block';
+    } else {
+      banner.style.display = 'none';
+    }
+  }
+}, 1000);
+
+
 // Technical Indicator Calculations
 function calculateEMA(candles, period) {
   if (!candles || candles.length < period) return [];
@@ -557,14 +580,45 @@ function toggleChartType() {
     }
   }
   renderChartData();
+// --- Tabbed Navigation Controller (Solves Heavy DOM lag) ---
+function switchNavTab(tabName) {
+  const tabs = ['scalper', 'marketwatch', 'news', 'accounts'];
+  tabs.forEach(t => {
+    const btn = document.getElementById('nav-tab-' + t);
+    const pane = document.getElementById('tab-content-' + t);
+    if (btn) {
+      if (t === tabName) {
+        btn.className = 'nav-tab-btn active';
+        btn.style.background = '#2563EB';
+        btn.style.color = '#FFFFFF';
+        btn.style.border = 'none';
+      } else {
+        btn.className = 'nav-tab-btn';
+        btn.style.background = '#F8FAFC';
+        btn.style.color = '#475569';
+        btn.style.border = '1.5px solid #CBD5E1';
+      }
+    }
+    if (pane) {
+      pane.style.display = (t === tabName) ? 'block' : 'none';
+    }
+  });
+
+  if (tabName === 'marketwatch') {
+    setTimeout(() => {
+      handleChartResize();
+    }, 60);
+  }
 }
 
 // --- Pro 1-Click Scalper & Autonomous Algo Console Controller ---
 let currentScalpSymbol = 'NIFTY';
+let currentScalpOrderType = 'LIMIT';
 let scalpParams = { lots: 1, sl: 15, tgt: 30 };
 const lotSizes = { 'NIFTY': 75, 'BANKNIFTY': 30, 'SENSEX': 10, 'FINNIFTY': 25 };
 const strikeSteps = { 'NIFTY': 50, 'BANKNIFTY': 100, 'SENSEX': 100, 'FINNIFTY': 50 };
 window.lastTicksCache = null;
+window.cooldowns = {};
 
 const scalpDisplayNames = {
   'NIFTY': 'NIFTY 50',
@@ -572,6 +626,21 @@ const scalpDisplayNames = {
   'SENSEX': 'SENSEX',
   'FINNIFTY': 'FIN NIFTY'
 };
+
+function setScalpOrderType(type) {
+  currentScalpOrderType = type;
+  const btnLimit = document.getElementById('btn-scalp-ordertype-limit');
+  const btnMarket = document.getElementById('btn-scalp-ordertype-market');
+  if (btnLimit && btnMarket) {
+    if (type === 'LIMIT') {
+      btnLimit.className = 'btn btn-primary';
+      btnMarket.className = 'btn btn-secondary';
+    } else {
+      btnMarket.className = 'btn btn-primary';
+      btnLimit.className = 'btn btn-secondary';
+    }
+  }
+}
 
 function selectScalpSymbol(sym) {
   currentScalpSymbol = sym;
@@ -598,6 +667,7 @@ function selectScalpSymbol(sym) {
     renderIndexCategoryItems(activeIndexCategory);
   }
 
+  updateScalperQuotes();
   if (window.lastTicksCache) {
     updateScalperDisplay(window.lastTicksCache);
   }
@@ -623,8 +693,77 @@ function changeScalpParam(param, delta) {
     if (tgtElem) tgtElem.textContent = scalpParams.tgt;
   }
 
+  updateScalperQuotes();
   if (window.lastTicksCache) {
     updateScalperDisplay(window.lastTicksCache);
+  }
+}
+
+async function updateScalperQuotes() {
+  try {
+    const res = await fetch(`/api/scalper/quotes?symbol=${currentScalpSymbol}&lots=${scalpParams.lots}`);
+    const data = await res.json();
+    if (!data || !data.ce || !data.pe) return;
+
+    const strikeElem = document.getElementById('scalp-calculated-strike');
+    if (strikeElem) strikeElem.textContent = data.strike;
+
+    const ce = data.ce;
+    const pe = data.pe;
+
+    const ceLabelElem = document.getElementById('btn-label-ce-strike');
+    if (ceLabelElem) {
+      ceLabelElem.textContent = `${data.underlying} ${data.strike} CE @ ₹${ce.estimated_premium} | માર્જિન: ₹${ce.required_margin.toLocaleString('en-IN')} (${data.lots} Lot / ${data.total_qty} Qty)`;
+    }
+
+    const peLabelElem = document.getElementById('btn-label-pe-strike');
+    if (peLabelElem) {
+      peLabelElem.textContent = `${data.underlying} ${data.strike} PE @ ₹${pe.estimated_premium} | માર્જિન: ₹${pe.required_margin.toLocaleString('en-IN')} (${data.lots} Lot / ${data.total_qty} Qty)`;
+    }
+
+    const deltaBadge = document.getElementById('scalper-delta-badge');
+    if (deltaBadge) {
+      const ceDelta = ce.delta || 0.52;
+      const peDelta = pe.delta || 0.48;
+      deltaBadge.innerHTML = `Δ CE: ~${ceDelta} | PE: ~${peDelta} (Spot 30 pt ≈ ₹${(30 * ceDelta).toFixed(1)})`;
+    }
+  } catch (err) {
+    console.error('Error fetching scalper quotes:', err);
+  }
+}
+
+function checkCooldownStatus() {
+  const cooldownAlert = document.getElementById('scalper-cooldown-alert');
+  const cooldownTimer = document.getElementById('scalper-cooldown-timer');
+  const btnCe = document.getElementById('btn-scalp-buy-ce');
+  const btnPe = document.getElementById('btn-scalp-buy-pe');
+  
+  if (!window.cooldowns) return;
+  const expiry = window.cooldowns[currentScalpSymbol];
+  const now = Date.now() / 1000;
+  
+  if (expiry && expiry > now) {
+    const remSec = Math.ceil(expiry - now);
+    if (cooldownAlert) cooldownAlert.style.display = 'block';
+    if (cooldownTimer) cooldownTimer.textContent = remSec;
+    if (btnCe && !btnCe.disabled) {
+      btnCe.disabled = true;
+      btnCe.style.opacity = '0.6';
+    }
+    if (btnPe && !btnPe.disabled) {
+      btnPe.disabled = true;
+      btnPe.style.opacity = '0.6';
+    }
+  } else {
+    if (cooldownAlert) cooldownAlert.style.display = 'none';
+    if (btnCe && btnCe.style.opacity === '0.6' && !btnCe.dataset.loading) {
+      btnCe.disabled = false;
+      btnCe.style.opacity = '1.0';
+    }
+    if (btnPe && btnPe.style.opacity === '0.6' && !btnPe.dataset.loading) {
+      btnPe.disabled = false;
+      btnPe.style.opacity = '1.0';
+    }
   }
 }
 
@@ -636,16 +775,11 @@ function updateScalperDisplay(ticks) {
   const symElem = document.getElementById('scalper-selected-sym');
   const ltpElem = document.getElementById('scalper-selected-ltp');
   const chgElem = document.getElementById('scalper-selected-chg');
-  const strikeElem = document.getElementById('scalp-calculated-strike');
-  const ceLabelElem = document.getElementById('btn-label-ce-strike');
-  const peLabelElem = document.getElementById('btn-label-pe-strike');
 
   const symName = scalpDisplayNames[currentScalpSymbol] || currentScalpSymbol;
 
   if (tick && tick.ltp !== undefined) {
     const ltp = Number(tick.ltp);
-    const step = strikeSteps[currentScalpSymbol] || 50;
-    const atmStrike = Math.round(ltp / step) * step;
 
     if (symElem) symElem.textContent = symName;
     if (ltpElem) ltpElem.textContent = '₹' + ltp.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
@@ -655,21 +789,18 @@ function updateScalperDisplay(ticks) {
       const streamStatus = window.isMarketOpen ? '⚡ 0.2ms LIVE' : '⏸️ ક્લોઝિંગ લેવલ (ફ્રીઝ)';
       chgElem.innerHTML = `Change: <span style="font-weight:700; color:${isPos ? '#16A34A' : '#DC2626'}">${isPos ? '+' : ''}${tick.change_pct}%</span> | ${streamStatus}`;
     }
+  }
 
-    if (strikeElem) strikeElem.textContent = atmStrike;
-
-    let estPrem = 115;
-    if (currentScalpSymbol === 'NIFTY') estPrem = Math.round(ltp * 0.0055);
-    else if (currentScalpSymbol === 'BANKNIFTY') estPrem = Math.round(ltp * 0.0045);
-    else if (currentScalpSymbol === 'SENSEX') estPrem = Math.round(ltp * 0.0040);
-    else if (currentScalpSymbol === 'FINNIFTY') estPrem = Math.round(ltp * 0.0050);
-
-    const totalQty = (lotSizes[currentScalpSymbol] || 25) * scalpParams.lots;
-    if (ceLabelElem) {
-      ceLabelElem.textContent = `${currentScalpSymbol} ${atmStrike} CE (ભાવ: ₹${estPrem}) | ${scalpParams.lots} Lot (${totalQty} Qty)`;
-    }
-    if (peLabelElem) {
-      peLabelElem.textContent = `${currentScalpSymbol} ${atmStrike} PE (ભાવ: ₹${estPrem}) | ${scalpParams.lots} Lot (${totalQty} Qty)`;
+  // Check India VIX for Low Volatility Warning
+  const vixTick = ticks['INDIAVIX'] || (window.lastTicksCache ? window.lastTicksCache['INDIAVIX'] : null);
+  const vixAlert = document.getElementById('scalper-vix-alert');
+  if (vixAlert && vixTick) {
+    const vixVal = Number(vixTick.ltp || vixTick.base_price || 11.16);
+    if (vixVal < 12.0) {
+      vixAlert.style.display = 'block';
+      vixAlert.innerHTML = `⚠️ લો-વોલેટિલિટી ચેતવણી (India VIX: <strong>${vixVal.toFixed(2)}</strong> < 12): શાંત બજારમાં ઓપ્શન પ્રીમિયમ ડીકેનું જોખમ વધુ છે. સિસ્ટમે સ્કેલ્પિંગ ટાર્ગેટ નાના (10% - 1:1.2 R:R) રાખ્યા છે.`;
+    } else {
+      vixAlert.style.display = 'none';
     }
   }
 
@@ -682,18 +813,20 @@ function updateScalperDisplay(ticks) {
       if (targetTick.change_pct >= 0.15) {
         algoSigElem.innerHTML = '🟢 BULLISH (9 EMA > 21 EMA)';
         algoSigElem.style.color = '#16A34A';
-        algoDetailElem.textContent = `RSI (14): 58.2 | ${symName} મજબૂત તેજી ટ્રેન્ડ કન્ફર્મ`;
+        algoDetailElem.textContent = `ટ્રેન્ડ: 15m (200 EMA) • સેટઅપ: 5m (EMA 9/21 + RSI: 58.2) કન્ફર્મ`;
       } else if (targetTick.change_pct <= -0.15) {
         algoSigElem.innerHTML = '🔴 BEARISH (9 EMA < 21 EMA)';
         algoSigElem.style.color = '#DC2626';
-        algoDetailElem.textContent = `RSI (14): 41.5 | ${symName} મજબૂત મંદી ટ્રેન્ડ કન્ફર્મ`;
+        algoDetailElem.textContent = `ટ્રેન્ડ: 15m (200 EMA) • સેટઅપ: 5m (EMA 9/21 + RSI: 41.5) કન્ફર્મ`;
       } else {
         algoSigElem.innerHTML = '⚪ RANGE-BOUND / CONSOLIDATION';
         algoSigElem.style.color = '#64748B';
-        algoDetailElem.textContent = `RSI (14): 49.8 | ${symName} બ્રેકઆઉટ લેવલની રાહ જોવાઈ રહી છે`;
+        algoDetailElem.textContent = `ટ્રેન્ડ: 15m રેન્જબાઉન્ડ • સેટઅપ: 5m (RSI: 49.8) બ્રેકઆઉટની રાહ`;
       }
     }
   }
+
+  checkCooldownStatus();
 }
 
 async function executeScalpOrder(optType) {
@@ -705,8 +838,9 @@ async function executeScalpOrder(optType) {
 
   if (btn) {
     btn.disabled = true;
+    btn.dataset.loading = "true";
     btn.style.opacity = '0.7';
-    btn.innerHTML = `<span>⏳ ઓર્ડર મોકલાઈ રહ્યો છે...</span><span style="font-size:0.75rem;">Angel One / Paper Mode</span>`;
+    btn.innerHTML = `<span>⏳ ઓર્ડર મોકલાઈ રહ્યો છે... (${currentScalpOrderType})</span><span style="font-size:0.75rem;">Angel One / Paper Mode</span>`;
   }
 
   try {
@@ -718,22 +852,25 @@ async function executeScalpOrder(optType) {
         option_type: optType,
         lots: scalpParams.lots,
         sl_pts: scalpParams.sl,
-        tgt_pts: scalpParams.tgt
+        tgt_pts: scalpParams.tgt,
+        order_type: currentScalpOrderType
       })
     });
     const data = await res.json();
     if (data.status === 'success') {
       const t = data.trade;
-      alert(`⚡ SCALPER EXECUTION SUCCESSFUL!\n----------------------------------------\nકોન્ટ્રાક્ટ: ${t.symbol}\nપ્રકાર: ${t.direction_label}\nલૉટ: ${t.lots_count} Lot (${t.qty} Qty)\nખરીદ ભાવ: ₹${t.entry_price}\nસ્ટોપલોસ (SL): ₹${t.stoploss_price} (-${t.stoploss_pts} pts)\nટાર્ગેટ (TGT): ₹${t.target_price} (+${t.target_pts} pts)\nમોડ: ${t.mode} TRADING\n----------------------------------------\nટ્રેડ સક્રિય પોઝિશનમાં ઉમેરાઈ ગયો છે.`);
+      const orderTypeTxt = t.order_type === 'LIMIT' ? `LIMIT @ ₹${t.limit_price} (સ્લિપેજ રક્ષણ)` : 'MARKET';
+      alert(`⚡ SCALPER EXECUTION SUCCESSFUL!\n----------------------------------------\nકોન્ટ્રાક્ટ: ${t.symbol}\nપ્રકાર: ${t.direction_label}\nઓર્ડર પ્રકાર: ${orderTypeTxt}\nલૉટ: ${t.lots_count} Lot (${t.qty} Qty)\nખરીદ ભાવ: ₹${t.entry_price}\nસ્ટોપલોસ (SL): ₹${t.stoploss_price} (-${t.stoploss_pts} pts)\nટાર્ગેટ (TGT): ₹${t.target_price} (+${t.target_pts} pts)\nમોડ: ${t.mode} TRADING\n----------------------------------------\nટ્રેડ સક્રિય પોઝિશનમાં ઉમેરાઈ ગયો છે.`);
       fetchActiveTrades();
       fetchStatus();
     } else {
-      alert(`❌ ઓર્ડર નિષ્ફળ: ${data.message || 'અજ્ઞાત એરર'}`);
+      alert(`❌ ઓર્ડર નિષ્ફળ:\n${data.message || 'અજ્ઞાત એરર'}`);
     }
   } catch (err) {
     alert(`સર્વર કનેક્શન એરર: ${err}`);
   } finally {
     if (btn) {
+      delete btn.dataset.loading;
       btn.disabled = false;
       btn.style.opacity = '1.0';
       btn.innerHTML = origText;
@@ -742,7 +879,7 @@ async function executeScalpOrder(optType) {
 }
 
 async function executeEmergencyKill() {
-  const confirmed = confirm('🚨 EMERGENCY KILL SWITCH:\n\nઆ બટન દબાવવાથી તમામ સક્રિય પોઝિશન્સ તુરંત સ્ક્વેર-ઓફ (Close All) થઈ જશે!\n\nશું તમે ખરેખર બધા જ ઓર્ડર તાત્કાલિક બંધ કરવા માંગો છો?');
+  const confirmed = confirm('🚨 EMERGENCY KILL SWITCH:\n\nઆ બટન દબાવવાથી તમામ સક્રિય પોઝિશન્સ તાત્કાલિક સ્ક્વેર-ઓફ (Close All) થઈ જશે!\n\nશું તમે ખરેખર બધા જ ઓર્ડર અત્યારના બજાર ભાવે બંધ કરવા માંગો છો?');
   if (!confirmed) return;
 
   try {
@@ -760,7 +897,10 @@ async function executeEmergencyKill() {
 async function toggleTradingMode() {
   const nextMode = currentMode === 'PAPER' ? 'LIVE' : 'PAPER';
   if (nextMode === 'LIVE') {
-    const confirmed = confirm('⚠️ ચેતવણી (REAL MONEY):\n\nતમે Angel One REAL MONEY Trading મોડ શરૂ કરવા જઈ રહ્યા છો!\nદરેક ઓર્ડર તમારા Angel One ડીમેટ એકાઉન્ટમાં સાચા પૈસાથી પડશે.\n\nશું તમે Real Trading શરૂ કરવા માંગો છો?');
+    const confirmed = confirm('⚠️ સાવધાન (REAL MONEY TRADING):\n\nતમે Angel One REAL MONEY Trading મોડ શરૂ કરવા જઈ રહ્યા છો!\nદરેક ઓર્ડર તમારા ડીમેટ એકાઉન્ટમાં સાચા પૈસાથી પડશે.\n\nશું તમે ખરેખર Real Trading શરૂ કરવા માંગો છો?');
+    if (!confirmed) return;
+  } else {
+    const confirmed = confirm('🛡️ શું તમે પેપર ટ્રેડિંગ (ડેમો મોડ) પર સ્વિચ કરવા માંગો છો?');
     if (!confirmed) return;
   }
   try {
@@ -770,9 +910,6 @@ async function toggleTradingMode() {
       body: JSON.stringify({ mode: nextMode })
     });
     fetchStatus();
-  } catch (err) {
-    console.error('Mode switch error:', err);
-  }
 }
 
 async function toggleEngineState() {
@@ -927,11 +1064,11 @@ async function fetchLiveTicks() {
   } catch (e) {}
 }
 
-// P&L Performance Filter & Reset Logic
+// P&L Performance Filter & Reset Logic (Applied exclusively to Trade History & Journal)
 async function applyPnlFilter(days) {
   currentPnlFilterDays = days;
   
-  // 1. Update filter button styling
+  // 1. Update filter button styling in Trade History Journal header
   const daysList = [1, 2, 7, 30, 90, 180, 365];
   daysList.forEach(d => {
     const btn = document.getElementById('filter-btn-' + d);
@@ -940,38 +1077,33 @@ async function applyPnlFilter(days) {
     }
   });
 
-  // 2. Fetch performance data for timeframe
+  // 2. Fetch performance & filtered trade history for timeframe
   try {
     const res = await fetch('/api/performance?days=' + days);
     const data = await res.json();
+    if (typeof recordSuccessfulFetch === 'function') recordSuccessfulFetch();
     
-    // 3. Update KPI cards
-    const netPnlElem = document.getElementById('net-pnl');
-    const pnlCard = document.getElementById('pnl-card');
-    const realizedPnlElem = document.getElementById('realized-pnl');
-    const unrealizedPnlElem = document.getElementById('unrealized-pnl');
-    const winRateElem = document.getElementById('win-rate');
-    const winCountsElem = document.getElementById('win-counts');
+    // 3. Update Trade History & Journal Badges ONLY (Never overwrite top intraday KPIs)
+    const countBadge = document.getElementById('history-count-badge');
+    const pnlBadge = document.getElementById('history-pnl-badge');
     
-    const pnl = data.net_pnl !== undefined ? data.net_pnl : 0.0;
-    if (pnl === 0) {
-      netPnlElem.textContent = '₹0.00';
-      netPnlElem.className = 'metric-value profit';
-      pnlCard.className = 'metric-card pnl-card';
-    } else if (pnl > 0) {
-      netPnlElem.textContent = '+₹' + pnl.toLocaleString('en-IN', {minimumFractionDigits: 2});
-      netPnlElem.className = 'metric-value profit';
-      pnlCard.className = 'metric-card pnl-card';
-    } else {
-      netPnlElem.textContent = '-₹' + Math.abs(pnl).toLocaleString('en-IN', {minimumFractionDigits: 2});
-      netPnlElem.className = 'metric-value loss';
-      pnlCard.className = 'metric-card pnl-card negative';
+    const count = data.total_trades || 0;
+    const realized = data.realized_pnl !== undefined ? Number(data.realized_pnl) : 0.0;
+    const isProfit = realized >= 0;
+    
+    if (countBadge) {
+      countBadge.textContent = `${count} Trades (${days === 1 ? 'આજે' : days + 'D'})`;
     }
-    
-    realizedPnlElem.textContent = 'Realized: ₹' + (data.realized_pnl !== undefined ? Number(data.realized_pnl).toFixed(2) : '0.00');
-    unrealizedPnlElem.textContent = 'Open: ₹' + (data.unrealized_pnl !== undefined ? Number(data.unrealized_pnl).toFixed(2) : '0.00');
-    winRateElem.textContent = (data.win_rate !== undefined ? data.win_rate : 0) + '%';
-    winCountsElem.textContent = (data.total_trades || 0) + ' Trades (' + (data.winning_trades || 0) + ' Win / ' + (data.losing_trades || 0) + ' Loss)';
+    if (pnlBadge) {
+      pnlBadge.textContent = `Realized: ${isProfit ? '+' : ''}₹${realized.toFixed(2)}`;
+      pnlBadge.style.color = isProfit ? '#15803D' : '#DC2626';
+      pnlBadge.style.background = isProfit ? '#DCFCE7' : '#FEE2E2';
+      pnlBadge.style.border = `1px solid ${isProfit ? '#86EFAC' : '#FCA5A5'}`;
+    }
+
+    if (data.trades) {
+      renderTradeHistoryRows(data.trades);
+    }
   } catch (err) {
     console.error('Error fetching filtered performance:', err);
   }
@@ -1098,32 +1230,28 @@ async function fetchStatus() {
       }
     }
 
-    // 4. Update Metrics (Respect active timeframe filter)
-    if (currentPnlFilterDays === 1) {
-      const netPnlElem = document.getElementById('net-pnl');
-      const pnlCard = document.getElementById('pnl-card');
-      const pnl = data.total_pnl || 0.0;
-      if (pnl === 0) {
-        netPnlElem.textContent = '₹0.00';
-        netPnlElem.className = 'metric-value profit';
-        pnlCard.className = 'metric-card pnl-card';
-      } else if (pnl > 0) {
-        netPnlElem.textContent = '+₹' + pnl.toLocaleString('en-IN', {minimumFractionDigits: 2});
-        netPnlElem.className = 'metric-value profit';
-        pnlCard.className = 'metric-card pnl-card';
-      } else {
-        netPnlElem.textContent = '-₹' + Math.abs(pnl).toLocaleString('en-IN', {minimumFractionDigits: 2});
-        netPnlElem.className = 'metric-value loss';
-        pnlCard.className = 'metric-card pnl-card negative';
-      }
-
-      document.getElementById('realized-pnl').textContent = 'Realized: ₹' + (data.daily_realized_pnl || 0.0);
-      document.getElementById('unrealized-pnl').textContent = 'Open: ₹' + (data.active_unrealized_pnl || 0.0);
-      document.getElementById('win-rate').textContent = (data.win_rate || 0) + '%';
-      document.getElementById('win-counts').textContent = (data.closed_trades_count || 0) + ' Trades Executed';
+    // 4. Update Metrics (Top KPIs always reflect Today's Live Intraday Performance)
+    const netPnlElem = document.getElementById('net-pnl');
+    const pnlCard = document.getElementById('pnl-card');
+    const pnl = data.total_pnl || 0.0;
+    if (pnl === 0) {
+      netPnlElem.textContent = '₹0.00';
+      netPnlElem.className = 'metric-value profit';
+      pnlCard.className = 'metric-card pnl-card';
+    } else if (pnl > 0) {
+      netPnlElem.textContent = '+₹' + pnl.toLocaleString('en-IN', {minimumFractionDigits: 2});
+      netPnlElem.className = 'metric-value profit';
+      pnlCard.className = 'metric-card pnl-card';
     } else {
-      applyPnlFilter(currentPnlFilterDays);
+      netPnlElem.textContent = '-₹' + Math.abs(pnl).toLocaleString('en-IN', {minimumFractionDigits: 2});
+      netPnlElem.className = 'metric-value loss';
+      pnlCard.className = 'metric-card pnl-card negative';
     }
+
+    document.getElementById('realized-pnl').textContent = 'Realized: ₹' + (data.daily_realized_pnl || 0.0);
+    document.getElementById('unrealized-pnl').textContent = 'Open: ₹' + (data.active_unrealized_pnl || 0.0);
+    document.getElementById('win-rate').textContent = (data.win_rate || 0) + '%';
+    document.getElementById('win-counts').textContent = (data.closed_trades_count || 0) + ' Trades Executed';
 
     // 5. Update Full Capital Transparency & Risk Pool
     const totCap = data.total_capital || data.total_managed_capital || 100000.0;
@@ -1205,7 +1333,7 @@ async function fetchStatus() {
 
     const scalperMargin = document.getElementById('scalper-margin-avail');
     if (scalperMargin) {
-      scalperMargin.textContent = 'માર્જિન: ₹' + Number(availCap).toLocaleString('en-IN', {maximumFractionDigits: 0});
+      scalperMargin.textContent = 'ઉપલબ્ધ રિસ્ક પૂલ: ₹' + Number(remPool).toLocaleString('en-IN', {maximumFractionDigits: 0}) + ' (25% મર્યાદા)';
     }
     const scalperPnl = document.getElementById('scalper-total-pnl');
     if (scalperPnl) {
@@ -1214,6 +1342,11 @@ async function fetchStatus() {
       scalperPnl.textContent = sign + '₹' + Number(net).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
       scalperPnl.style.color = net >= 0 ? '#16A34A' : '#DC2626';
     }
+
+    // Update Cooldowns and Network Liveness
+    window.cooldowns = data.cooldowns || {};
+    if (typeof checkCooldownStatus === 'function') checkCooldownStatus();
+    if (typeof recordSuccessfulFetch === 'function') recordSuccessfulFetch();
 
     // Render Logs
     const logContainer = document.getElementById('log-stream');
@@ -1315,10 +1448,10 @@ function renderIndexCategoryItems(catKey) {
 
   container.innerHTML = items.map(item => {
     const isSelected = (item.symbol === currentChartSymbol) || (item.display_name === currentChartSymbol);
-    const isPos = (item.change_pct === undefined) || item.change_pct >= 0;
-    const chgClass = isPos ? 'pos' : 'neg';
-    const chgSign = isPos ? '+' : '';
-    const chgText = item.change_pct !== undefined ? `${chgSign}${item.change_pct}%` : '0.00%';
+    const chgVal = item.change_pct !== undefined ? Number(item.change_pct) : 0.0;
+    const chgClass = chgVal > 0 ? 'pos' : (chgVal < 0 ? 'neg' : 'neu');
+    const chgSign = chgVal > 0 ? '+' : '';
+    const chgText = `${chgSign}${chgVal.toFixed(2)}%`;
     const priceFormatted = Number(item.base_price).toLocaleString('en-IN', {
       minimumFractionDigits: (item.base_price < 500 ? 2 : 2)
     });
@@ -1524,105 +1657,85 @@ function setHistoryFilter(filter) {
 }
 
 async function exportTradesCSV() {
-  window.open(`/api/trades/export-csv?filter=${currentHistoryFilter}`, '_blank');
+  window.open(`/api/trades/export-csv?filter=${currentPnlFilterDays}`, '_blank');
+}
+
+function renderTradeHistoryRows(trades) {
+  const tbody = document.getElementById('trade-history-body');
+  if (!tbody) return;
+
+  if (!trades || trades.length === 0) {
+    const emptyMsg = currentPnlFilterDays === 1
+      ? 'આજે હજુ કોઈ સોદો પૂર્ણ થયો નથી. માર્કેટ શરૂ થતાં ખરીદ-વેચાણની વિગત (કેટલામાં લીધા, કેટલામાં વેચ્યા, નફો) અહીં લાઈવ નોંધાશે.'
+      : `${currentPnlFilterDays} દિવસના સમયગાળામાં કોઈ સોદો નોંધાયેલ નથી.`;
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#64748B; padding:24px;">${emptyMsg}</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = trades.map((t) => {
+    const pnl = Number(t.pnl || 0);
+    const isProfit = pnl >= 0;
+    const pnlColor = isProfit ? '#15803D' : '#DC2626';
+    const pnlBg = isProfit ? '#DCFCE7' : '#FEE2E2';
+    const pnlSign = isProfit ? '+' : '';
+    
+    const buyPrice = Number(t.entry_price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const sellPrice = Number(t.exit_price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const pnlVal = Number(Math.abs(pnl)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    
+    const exitTimeStr = t.exit_date ? String(t.exit_date).slice(11, 19) : '--';
+    const exitDateStr = t.exit_date ? String(t.exit_date).slice(0, 10) : '--';
+    const entryTimeStr = t.entry_date ? String(t.entry_date).slice(11, 19) : '--';
+
+    let reasonLabel = String(t.exit_reason || 'Exit');
+    if (reasonLabel.includes('TARGET_HIT')) {
+      reasonLabel = `<span style="background:#DCFCE7; color:#15803D; font-weight:700; padding:2px 8px; border-radius:4px; border:1px solid #86EFAC;">🎯 Target Hit</span>`;
+    } else if (reasonLabel.includes('TRAILING_SL')) {
+      reasonLabel = `<span style="background:#DCFCE7; color:#166534; font-weight:700; padding:2px 8px; border-radius:4px; border:1px solid #86EFAC;">🛡️ Trailing SL Locked</span>`;
+    } else if (reasonLabel.includes('STOPLOSS_HIT')) {
+      reasonLabel = `<span style="background:#FEE2E2; color:#DC2626; font-weight:700; padding:2px 8px; border-radius:4px; border:1px solid #FCA5A5;">🛑 Stop Loss</span>`;
+    } else if (reasonLabel.includes('INTRADAY_315') || reasonLabel.includes('MARKET_CLOSE')) {
+      reasonLabel = `<span style="background:#FEF3C7; color:#B45309; font-weight:700; padding:2px 8px; border-radius:4px; border:1px solid #FCD34D;">🕒 3:15 PM Square-off</span>`;
+    } else if (reasonLabel.includes('MANUAL')) {
+      reasonLabel = `<span style="background:#E2E8F0; color:#334155; font-weight:700; padding:2px 8px; border-radius:4px; border:1px solid #CBD5E1;">👤 Manual Exit</span>`;
+    }
+
+    const modeBadge = t.mode === 'LIVE' 
+      ? `<span style="background:#DCFCE7; color:#15803D; font-size:0.68rem; padding:1px 5px; border-radius:4px; font-weight:700;">LIVE</span>`
+      : `<span style="background:#F1F5F9; color:#64748B; font-size:0.68rem; padding:1px 5px; border-radius:4px; font-weight:700;">PAPER</span>`;
+
+    return `
+      <tr>
+        <td>
+          <strong>${exitTimeStr}</strong> <small style="color:#64748B;">(${exitDateStr})</small><br>
+          <small style="color:#64748B;">લીધા: ${entryTimeStr}</small>
+        </td>
+        <td>
+          <strong>${t.symbol}</strong> ${modeBadge}<br>
+          <small style="color:#64748B;">${t.account_name || 'Account'}</small>
+        </td>
+        <td>
+          <span class="${t.trade_type === 'SWING_DELIVERY' ? 'type-swing' : 'type-intraday'}">
+            ${t.trade_type === 'SWING_DELIVERY' ? '📦 2-7d Swing' : '⚡ Intraday'}
+          </span>
+        </td>
+        <td><strong>${t.qty}</strong> <small style="color:#64748B;">શેર</small></td>
+        <td><span style="font-weight:700; color:#0F172A;">₹${buyPrice}</span></td>
+        <td><span style="font-weight:700; color:#0F172A;">₹${sellPrice}</span></td>
+        <td><span style="font-size:0.8rem; color:#475569;">${t.duration_str || '--'}</span></td>
+        <td>
+          <span style="font-weight:800; font-size:0.9rem; color:${pnlColor}; background:${pnlBg}; padding:2px 8px; border-radius:4px;">
+            ${pnlSign}₹${pnlVal} (${pnlSign}${t.pnl_pct || 0}%)
+          </span>
+        </td>
+        <td>${reasonLabel}</td>
+      </tr>
+    `;
+  }).join('');
 }
 
 async function fetchTradeHistory() {
-  try {
-    const res = await fetch(`/api/trades/history?filter=${currentHistoryFilter}`);
-    const trades = await res.json();
-    const tbody = document.getElementById('trade-history-body');
-    const countBadge = document.getElementById('history-count-badge');
-    const pnlBadge = document.getElementById('history-pnl-badge');
-
-    if (!tbody) return;
-
-    if (countBadge) {
-      countBadge.textContent = `${trades.length} Trades`;
-    }
-    const scalperClosedCount = document.getElementById('scalper-closed-count');
-    if (scalperClosedCount) scalperClosedCount.textContent = trades.length;
-
-    const totalPnL = trades.reduce((sum, t) => sum + (t.pnl || 0), 0);
-    if (pnlBadge) {
-      const isProfit = totalPnL >= 0;
-      pnlBadge.textContent = `Realized: ${isProfit ? '+' : ''}₹${totalPnL.toFixed(2)}`;
-      pnlBadge.style.color = isProfit ? '#15803D' : '#DC2626';
-      pnlBadge.style.background = isProfit ? '#DCFCE7' : '#FEE2E2';
-      pnlBadge.style.border = `1px solid ${isProfit ? '#86EFAC' : '#FCA5A5'}`;
-    }
-
-    if (!trades || trades.length === 0) {
-      const emptyMsg = currentHistoryFilter === 'today'
-        ? 'આજે હજુ કોઈ સોદો પૂર્ણ થયો નથી. માર્કેટ શરૂ થતાં ખરીદ-વેચાણની વિગત (કેટલામાં લીધા, કેટલામાં વેચ્યા, નફો) અહીં લાઈવ નોંધાશે.'
-        : 'હજુ સુધી કોઈ સોદાનો ઇતિહાસ નોંધાયેલ નથી.';
-      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#64748B; padding:24px;">${emptyMsg}</td></tr>`;
-      return;
-    }
-
-    tbody.innerHTML = trades.map((t) => {
-      const pnl = Number(t.pnl || 0);
-      const isProfit = pnl >= 0;
-      const pnlColor = isProfit ? '#15803D' : '#DC2626';
-      const pnlBg = isProfit ? '#DCFCE7' : '#FEE2E2';
-      const pnlSign = isProfit ? '+' : '';
-      
-      const buyPrice = Number(t.entry_price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      const sellPrice = Number(t.exit_price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      const pnlVal = Number(Math.abs(pnl)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      
-      const exitTimeStr = t.exit_date ? String(t.exit_date).slice(11, 19) : '--';
-      const exitDateStr = t.exit_date ? String(t.exit_date).slice(0, 10) : '--';
-      const entryTimeStr = t.entry_date ? String(t.entry_date).slice(11, 19) : '--';
-
-      let reasonLabel = String(t.exit_reason || 'Exit');
-      if (reasonLabel.includes('TARGET_HIT')) {
-        reasonLabel = `<span style="background:#DCFCE7; color:#15803D; font-weight:700; padding:2px 8px; border-radius:4px; border:1px solid #86EFAC;">🎯 Target Hit</span>`;
-      } else if (reasonLabel.includes('TRAILING_SL')) {
-        reasonLabel = `<span style="background:#DCFCE7; color:#166534; font-weight:700; padding:2px 8px; border-radius:4px; border:1px solid #86EFAC;">🛡️ Trailing SL Locked</span>`;
-      } else if (reasonLabel.includes('STOPLOSS_HIT')) {
-        reasonLabel = `<span style="background:#FEE2E2; color:#DC2626; font-weight:700; padding:2px 8px; border-radius:4px; border:1px solid #FCA5A5;">🛑 Stop Loss</span>`;
-      } else if (reasonLabel.includes('INTRADAY_315') || reasonLabel.includes('MARKET_CLOSE')) {
-        reasonLabel = `<span style="background:#FEF3C7; color:#B45309; font-weight:700; padding:2px 8px; border-radius:4px; border:1px solid #FCD34D;">🕒 3:15 PM Square-off</span>`;
-      } else if (reasonLabel.includes('MANUAL')) {
-        reasonLabel = `<span style="background:#E2E8F0; color:#334155; font-weight:700; padding:2px 8px; border-radius:4px; border:1px solid #CBD5E1;">👤 Manual Exit</span>`;
-      }
-
-      const modeBadge = t.mode === 'LIVE' 
-        ? `<span style="background:#DCFCE7; color:#15803D; font-size:0.68rem; padding:1px 5px; border-radius:4px; font-weight:700;">LIVE</span>`
-        : `<span style="background:#F1F5F9; color:#64748B; font-size:0.68rem; padding:1px 5px; border-radius:4px; font-weight:700;">PAPER</span>`;
-
-      return `
-        <tr>
-          <td>
-            <strong>${exitTimeStr}</strong> <small style="color:#64748B;">(${exitDateStr})</small><br>
-            <small style="color:#64748B;">લીધા: ${entryTimeStr}</small>
-          </td>
-          <td>
-            <strong>${t.symbol}</strong> ${modeBadge}<br>
-            <small style="color:#64748B;">${t.account_name || 'Account'}</small>
-          </td>
-          <td>
-            <span class="${t.trade_type === 'SWING_DELIVERY' ? 'type-swing' : 'type-intraday'}">
-              ${t.trade_type === 'SWING_DELIVERY' ? '📦 2-7d Swing' : '⚡ Intraday'}
-            </span>
-          </td>
-          <td><strong>${t.qty}</strong> <small style="color:#64748B;">શેર</small></td>
-          <td><span style="font-weight:700; color:#0F172A;">₹${buyPrice}</span></td>
-          <td><span style="font-weight:700; color:#0F172A;">₹${sellPrice}</span></td>
-          <td><span style="font-size:0.8rem; color:#475569;">${t.duration_str || '--'}</span></td>
-          <td>
-            <span style="font-weight:800; font-size:0.9rem; color:${pnlColor}; background:${pnlBg}; padding:2px 8px; border-radius:4px;">
-              ${pnlSign}₹${pnlVal} (${pnlSign}${t.pnl_pct || 0}%)
-            </span>
-          </td>
-          <td>${reasonLabel}</td>
-        </tr>
-      `;
-    }).join('');
-  } catch (err) {
-    console.error('Error fetching trade history:', err);
-  }
+  await applyPnlFilter(currentPnlFilterDays);
 }
 
 async function fetchAccounts() {

@@ -342,9 +342,17 @@ class AngelOneService:
             
         atm_strike = int(round(spot_price / step) * step) if spot_price > 0 else (23550 if und == "NIFTY" else 56800)
         
-        diff = abs(spot_price - atm_strike)
-        base_tv = 115.0 if und == "NIFTY" else (230.0 if und == "BANKNIFTY" else 95.0)
-        est_premium = round(max(35.0, base_tv + (diff * 0.45)), 1)
+        diff = spot_price - atm_strike  # positive if spot > strike, negative if spot < strike
+        base_tv = 122.0 if und == "NIFTY" else (245.0 if und == "BANKNIFTY" else (88.0 if und == "FINNIFTY" else 285.0))
+        
+        if opt == "CE":
+            # Call Option: ITM if spot > strike, OTM if spot < strike
+            delta = min(0.75, max(0.30, 0.50 + (diff / step) * 0.15))
+            est_premium = round(max(25.0, base_tv + (diff * delta)), 1)
+        else:
+            # Put Option: ITM if spot < strike, OTM if spot > strike
+            delta = min(0.75, max(0.30, 0.50 + (-diff / step) * 0.15))
+            est_premium = round(max(25.0, base_tv + (-diff * delta)), 1)
         
         tradingsymbol = f"{und}24SEP{atm_strike}{opt}"
         contract_name = f"{und} 24 SEP {atm_strike} {opt}"
@@ -356,6 +364,7 @@ class AngelOneService:
             "tradingsymbol": tradingsymbol,
             "contract_name": contract_name,
             "lot_size": lot_size,
+            "delta": round(delta, 2),
             "estimated_premium": est_premium
         }
 

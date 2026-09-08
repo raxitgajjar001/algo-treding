@@ -6,10 +6,11 @@
   "max_concurrent_trades": 5,
   "intraday_target_pct": 2.0,
   "intraday_stoploss_pct": 1.0,
-  "swing_target_pct": 6.0,
-  "swing_stoploss_pct": 2.5,
-  "max_swing_holding_days": 7,
   "intraday_squareoff_time": "15:15",
   "min_confidence_score": 80,
-  "auto_swing_enabled": true
+  "auto_swing_enabled": true,
+  "product": "INTRADAY",
+  "swing_target_pct": 6.0,
+  "swing_stoploss_pct": 2.5,
+  "max_swing_holding_days": 7
 }

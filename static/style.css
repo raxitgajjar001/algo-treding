@@ -1329,6 +1329,12 @@ tr:hover {
   color: #B91C1C;
 }
 
+.index-card-chg.neu {
+  background: #F1F5F9;
+  color: #64748B;
+}
+
+
 /* Direction Badges for Active Trades */
 .badge-dir-long {
   background: #DCFCE7;

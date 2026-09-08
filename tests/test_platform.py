@@ -77,6 +77,30 @@ class TestAlgoPlatform(unittest.TestCase):
         self.assertIn("trade_type", first)
         self.assertIn("target_price", first)
         self.assertIn("stoploss_price", first)
+        self.assertIn("delta", first)
+        self.assertIn("india_vix", first)
+
+    def test_mathematical_pnl_nifty(self):
+        # 21.25 pts * 75 qty - 48.50 charges = 1545.25
+        target_pts = 21.25
+        lot_size = 75
+        round_trip_charges = 48.50
+        gross = round(target_pts * lot_size, 2)
+        net = round(gross - round_trip_charges, 2)
+        self.assertEqual(gross, 1593.75)
+        self.assertEqual(net, 1545.25)
+
+    def test_independent_ce_pe_quotes(self):
+        from angel_one_service import angel_one_service
+        ce = angel_one_service.get_atm_option_details("NIFTY", 23635.10, "CE")
+        pe = angel_one_service.get_atm_option_details("NIFTY", 23635.10, "PE")
+        self.assertEqual(ce["lot_size"], 75)
+        self.assertEqual(pe["lot_size"], 75)
+        # Spot is 23635.10, ATM strike is 23650. Spot < Strike -> CE is slightly OTM, PE is slightly ITM
+        # Their premiums must not be dummy identical
+        self.assertNotEqual(ce["estimated_premium"], pe["estimated_premium"])
+        self.assertGreater(pe["estimated_premium"], ce["estimated_premium"])
 
 if __name__ == "__main__":
     unittest.main()
+

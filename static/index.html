@@ -42,20 +42,23 @@
     <div class="header-actions">
       <span id="market-status-badge" class="badge badge-bearish" style="font-weight: 800; font-size: 0.82rem;">🔴 MARKET CLOSED</span>
       <span id="latency-badge" class="badge" style="background:#F1F5F9; color:#475569; border:1px solid #CBD5E1; font-weight:800; font-size:0.75rem;">⏸️ ક્લોઝિંગ લેવલ (ફ્રીઝ)</span>
-      <span id="mode-badge" class="badge badge-paper">PAPER TRADING (ડેમો મોડ)</span>
+      <span id="live-sync-badge" class="badge" style="background:#ECFDF5; color:#065F46; border:1px solid #6EE7B7; font-weight:800; font-size:0.75rem;">🟢 લાઈવ સિન્ક: ૧ સેકન્ડ</span>
+      <span id="mode-badge" class="badge badge-paper">🟡 PAPER TRADING (ડેમો મોડ)</span>
       <button class="btn btn-secondary" onclick="openBrokerModal()" style="font-size:0.75rem; padding:6px 11px; background:#F0FDF4; border-color:#86EFAC; color:#166534; font-weight:700;">🔌 બ્રોકર (Groww/INDmoney)</button>
-      <button class="btn btn-secondary" onclick="toggleMode()">🔄 Switch Mode (મોડ બદલો)</button>
+      <button class="btn btn-secondary" onclick="toggleTradingMode()">🔄 Switch Mode (મોડ બદલો)</button>
       <button class="btn btn-secondary" onclick="manualRefreshData()" id="btn-manual-refresh" style="font-size:0.75rem; padding:6px 11px; background:#EFF6FF; border-color:#93C5FD; color:#1D4ED8; font-weight:700;">🔄 રીફ્રેશ (Refresh)</button>
       <button class="btn btn-secondary" onclick="openChangePasswordModal()" style="font-size:0.75rem; padding:6px 10px;">🔑 પાસવર્ડ બદલો</button>
       <button class="btn btn-secondary" onclick="logoutUser()" style="font-size:0.75rem; padding:6px 10px; color:#B91C1C; border-color:#FCA5A5;">🚪 Logout</button>
-      <button class="btn btn-danger" onclick="emergencyKill()">🚨 Emergency Kill</button>
     </div>
   </header>
 
-  <!-- 100% Indian Market Live Indices Ticker Ribbon -->
-  
+  <!-- Network Lag Alert Banner -->
+  <div id="network-lag-banner" style="display: none; background: #FFFBEB; border: 1.5px solid #F59E0B; border-radius: 8px; padding: 10px 16px; margin-bottom: 14px; color: #B45309; font-weight: 800; font-size: 0.85rem; text-align: center;">
+    ⚠️ નેટવર્ક અથવા બ્રોકર API કનેક્શનમાં વિલંબ (Latency > 3s) - ડેટા ફરીથી કનેક્ટ થઈ રહ્યો છે...
+  </div>
+
   <!-- Live Market Hours Notice Banner -->
-  <div id="market-notice-bar" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: #FEF2F2; border: 1.5px solid #FCA5A5; border-radius: 8px; margin-bottom: 16px; color: #991B1B; font-size: 0.85rem; font-weight: 700;">
+  <div id="market-notice-bar" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: #FEF2F2; border: 1.5px solid #FCA5A5; border-radius: 8px; margin-bottom: 14px; color: #991B1B; font-size: 0.85rem; font-weight: 700;">
     <div style="display: flex; align-items: center; gap: 8px;">
       <span style="font-size: 1.1rem;">🕒</span>
       <span id="market-notice-text">ભારતીય શેરબજાર (NSE/BSE) બપોરે 03:30 વાગ્યે બંધ થઈ ગયું છે. તમામ ભાવો આજના ક્લોઝિંગ લેવલ પર ફ્રીઝ કરેલા છે. આગામી સત્ર આવતીકાલે સવારે 09:15 વાગ્યે શરૂ થશે.</span>
@@ -63,7 +66,8 @@
     <span id="clock-ist" style="font-size: 0.85rem; background: #FFFFFF; padding: 3px 10px; border-radius: 6px; border: 1px solid #FCA5A5; color: #B91C1C; font-weight: 800;">--:--:-- IST</span>
   </div>
 
-  <div class="indian-market-ribbon" style="display: flex; gap: 12px; overflow-x: auto; margin-bottom: 18px; padding: 10px 14px; background: #FFFFFF; border: 1.5px solid #CBD5E1; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+  <!-- 100% Indian Market Live Indices Ticker Ribbon -->
+  <div class="indian-market-ribbon" style="display: flex; gap: 12px; overflow-x: auto; margin-bottom: 14px; padding: 10px 14px; background: #FFFFFF; border: 1.5px solid #CBD5E1; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
     <div class="index-pill" onclick="switchChart('NSE:NIFTY')" style="cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 4px 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px;">
       <span style="font-weight: 800; color: #0F172A; font-size: 0.85rem;">📊 NIFTY 50</span>
       <span id="ticker-nifty" style="font-weight: 700; color: #15803D; font-size: 0.85rem;">--</span>
@@ -86,31 +90,29 @@
     </div>
   </div>
 
-  <!-- PnL Performance Timeframe Filter & Reset Bar -->
-  <div class="pnl-filter-bar" style="display: flex; justify-content: space-between; align-items: center; background: #FFFFFF; border: 1.5px solid #CBD5E1; border-radius: 10px; padding: 10px 16px; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-      <span style="font-size: 0.82rem; font-weight: 800; color: #0F172A;">📊 નફો/નુકસાન સમયગાળો (P&L Filter):</span>
-      <div class="timeframe-filters" style="display: flex; gap: 5px; flex-wrap: wrap;">
-        <button id="filter-btn-1" class="btn btn-primary" style="padding: 3px 10px; font-size: 0.75rem;" onclick="applyPnlFilter(1)">1D (આજે)</button>
-        <button id="filter-btn-2" class="btn btn-secondary" style="padding: 3px 10px; font-size: 0.75rem;" onclick="applyPnlFilter(2)">2D (2 દિવસ)</button>
-        <button id="filter-btn-7" class="btn btn-secondary" style="padding: 3px 10px; font-size: 0.75rem;" onclick="applyPnlFilter(7)">7D (1 અઠવાડિયું)</button>
-        <button id="filter-btn-30" class="btn btn-secondary" style="padding: 3px 10px; font-size: 0.75rem;" onclick="applyPnlFilter(30)">1M (1 મહિનો)</button>
-        <button id="filter-btn-90" class="btn btn-secondary" style="padding: 3px 10px; font-size: 0.75rem;" onclick="applyPnlFilter(90)">3M (3 મહિના)</button>
-        <button id="filter-btn-180" class="btn btn-secondary" style="padding: 3px 10px; font-size: 0.75rem;" onclick="applyPnlFilter(180)">6M (6 મહિના)</button>
-        <button id="filter-btn-365" class="btn btn-secondary" style="padding: 3px 10px; font-size: 0.75rem;" onclick="applyPnlFilter(365)">12M (1 વર્ષ)</button>
-      </div>
-    </div>
-    <div>
-      <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem; color: #DC2626; border-color: #FCA5A5;" onclick="resetAllPnLToZero()">
-        🔄 Reset to ₹0 (બધું 0 કરો)
-      </button>
-    </div>
-  </div>
+  <!-- Main Top-Level Navigation Tabs (Solves Heavy DOM Lag) -->
+  <nav class="main-nav-tabs" style="display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 2px solid #E2E8F0; padding-bottom: 8px; flex-wrap: wrap;">
+    <button id="nav-tab-scalper" class="nav-tab-btn active" onclick="switchNavTab('scalper')" style="padding: 8px 18px; font-size: 0.85rem; font-weight: 800; border-radius: 8px; border: none; cursor: pointer; background: #2563EB; color: #FFFFFF;">
+      ⚡ પ્રો સ્કેલ્પર અને લાઈવ કન્સોલ (Pro Scalper & Live)
+    </button>
+    <button id="nav-tab-marketwatch" class="nav-tab-btn" onclick="switchNavTab('marketwatch')" style="padding: 8px 18px; font-size: 0.85rem; font-weight: 800; border-radius: 8px; border: 1.5px solid #CBD5E1; cursor: pointer; background: #F8FAFC; color: #475569;">
+      🌐 માર્કેટ વૉચ એક્સપ્લોરર (65+ Indices & F&O)
+    </button>
+    <button id="nav-tab-news" class="nav-tab-btn" onclick="switchNavTab('news')" style="padding: 8px 18px; font-size: 0.85rem; font-weight: 800; border-radius: 8px; border: 1.5px solid #CBD5E1; cursor: pointer; background: #F8FAFC; color: #475569;">
+      📰 તાજા સમાચાર & સેન્ટિમેન્ટ (Live News)
+    </button>
+    <button id="nav-tab-accounts" class="nav-tab-btn" onclick="switchNavTab('accounts')" style="padding: 8px 18px; font-size: 0.85rem; font-weight: 800; border-radius: 8px; border: 1.5px solid #CBD5E1; cursor: pointer; background: #F8FAFC; color: #475569;">
+      💼 ડિમેટ એકાઉન્ટ્સ & બ્રોકર (Accounts)
+    </button>
+  </nav>
 
-  <!-- KPI Metrics (Complete Live Capital & P&L Transparency) -->
+  <!-- TAB 1: PRO SCALPER & LIVE CONSOLE -->
+  <div id="tab-content-scalper" class="tab-page-content" style="display: block;">
+
+  <!-- KPI Metrics (Always Today's Live Intraday Performance) -->
   <section class="metrics-grid">
     <div id="pnl-card" class="metric-card pnl-card">
-      <div class="metric-label">કુલ નફો / નુકસાન (Net P&L)</div>
+      <div class="metric-label">આજનો લાઈવ P&L (Today's Intraday)</div>
       <div id="net-pnl" class="metric-value profit">₹0.00</div>
       <div class="metric-sub">
         <span id="realized-pnl">Realized: ₹0</span> • <span id="unrealized-pnl">Live Open: ₹0</span>
@@ -193,19 +195,22 @@
 
       <!-- Strategy Confirmation Status -->
       <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px 14px;">
-        <div style="font-size: 0.75rem; font-weight: 700; color: #64748B; text-transform: uppercase;">અલ્ગો સિગ્નલ (EMA 9/21 + RSI)</div>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="font-size: 0.75rem; font-weight: 700; color: #64748B; text-transform: uppercase;">અલ્ગો સિગ્નલ (EMA 9/21 + RSI)</div>
+          <span style="font-size: 0.68rem; background: #EFF6FF; color: #1D4ED8; font-weight: 700; padding: 1px 6px; border-radius: 4px; border: 1px solid #BFDBFE;">15m Trend • 5m Setup</span>
+        </div>
         <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
           <span id="scalper-algo-signal" style="font-size: 1.05rem; font-weight: 900; color: #16A34A;">🟢 BULLISH (9 EMA > 21 EMA)</span>
         </div>
-        <div style="font-size: 0.72rem; color: #64748B; margin-top: 2px;" id="scalper-algo-detail">RSI (14): 56.4 | ટ્રેન્ડ કન્ફર્મ થયે ઓટો-ટ્રેડ પડશે</div>
+        <div style="font-size: 0.72rem; color: #64748B; margin-top: 2px;" id="scalper-algo-detail">ટ્રેન્ડ: 15m (200 EMA) • સેટઅપ: 5m (EMA 9/21 + RSI 14) કન્ફર્મ</div>
       </div>
 
-      <!-- Daily P&L & Margin -->
+      <!-- Daily P&L & Margin (Risk Pool 25% Cap) -->
       <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px 14px;">
-        <div style="font-size: 0.75rem; font-weight: 700; color: #64748B; text-transform: uppercase;">આજનો કુલ P&L અને માર્જિન</div>
+        <div style="font-size: 0.75rem; font-weight: 700; color: #64748B; text-transform: uppercase;">આજનો કુલ P&L અને રિસ્ક પૂલ</div>
         <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 4px;">
           <span id="scalper-total-pnl" style="font-size: 1.25rem; font-weight: 900; color: #16A34A;">+₹0.00</span>
-          <span id="scalper-margin-avail" style="font-size: 0.85rem; font-weight: 800; color: #475569;">માર્જિન: ₹1,00,000</span>
+          <span id="scalper-margin-avail" style="font-size: 0.82rem; font-weight: 800; color: #475569;">ઉપલબ્ધ રિસ્ક પૂલ: ₹25,000 (25% મર્યાદા)</span>
         </div>
         <div style="font-size: 0.72rem; color: #64748B; margin-top: 2px;">ચાલુ ટ્રેડ્સ: <span id="scalper-active-count" style="font-weight: 800; color: #0F172A;">0</span> | ક્લોઝ્ડ: <span id="scalper-closed-count">0</span></div>
       </div>
@@ -214,6 +219,16 @@
     <!-- 1-Click Pro Scalper Console -->
     <div style="background: #F1F5F9; border: 1.5px solid #CBD5E1; border-radius: 10px; padding: 16px;">
       
+      <!-- India VIX Volatility Guard Warning (Shown when VIX < 12) -->
+      <div id="scalper-vix-alert" style="display: none; background: #FFFBEB; border: 1.5px solid #FDE68A; border-radius: 6px; padding: 8px 12px; margin-bottom: 12px; color: #92400E; font-size: 0.78rem; font-weight: 700;">
+        ⚠️ લો-વોલેટિલિટી ચેતવણી (India VIX < 12): માર્કેટ શાંત હોવાથી ઓપ્શન બાઈંગમાં પ્રીમિયમ ડીકે (Theta Decay) નું જોખમ વધુ છે. સિસ્ટમે સ્કેલ્પિંગ ટાર્ગેટ નાના (10% - 1:1.2 R:R) રાખ્યા છે.
+      </div>
+
+      <!-- Post-Trade Cool-Down Protection Banner (180s After Exit) -->
+      <div id="scalper-cooldown-alert" style="display: none; background: #FEF2F2; border: 1.5px solid #FCA5A5; border-radius: 6px; padding: 8px 12px; margin-bottom: 12px; color: #991B1B; font-size: 0.78rem; font-weight: 700;">
+        ⏳ કૂલ-ડાઉન સક્રિય (ઓવર-ટ્રેડિંગ રક્ષણ): <span id="scalper-cooldown-timer" style="font-weight: 900; font-size: 0.9rem;">180</span> સેકન્ડ બાકી. બ્રોકરેજ બચાવવા અને ભાવ સ્થિર થવા માટે રાહ જુઓ.
+      </div>
+
       <!-- Index Selector Tabs -->
       <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px;">
         <button id="scalp-sym-NIFTY" class="btn btn-primary" style="padding: 6px 14px; font-size: 0.82rem; font-weight: 800;" onclick="selectScalpSymbol('NIFTY')">
@@ -231,10 +246,17 @@
       </div>
 
       <!-- Parameter Adjusters Row -->
-      <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; background: #FFFFFF; padding: 10px 14px; border-radius: 8px; border: 1px solid #E2E8F0;">
+      <div style="display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; background: #FFFFFF; padding: 10px 14px; border-radius: 8px; border: 1px solid #E2E8F0;">
+        <!-- Order Type Selector (Limit vs Market) -->
+        <div style="display: flex; align-items: center; gap: 6px; border-right: 1px solid #E2E8F0; padding-right: 12px;">
+          <span style="font-size: 0.78rem; font-weight: 800; color: #0F172A;">ઓર્ડર:</span>
+          <button id="btn-scalp-ordertype-limit" class="btn btn-primary" style="padding: 3px 9px; font-size: 0.74rem; font-weight: 800;" onclick="setScalpOrderType('LIMIT')">🎯 LIMIT</button>
+          <button id="btn-scalp-ordertype-market" class="btn btn-secondary" style="padding: 3px 9px; font-size: 0.74rem; font-weight: 800;" onclick="setScalpOrderType('MARKET')">⚡ MARKET</button>
+        </div>
+
         <!-- Lot Selector -->
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="font-size: 0.8rem; font-weight: 800; color: #475569;">લૉટ (Lots):</span>
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span style="font-size: 0.8rem; font-weight: 800; color: #475569;">લૉટ:</span>
           <button class="btn btn-secondary" style="padding: 2px 8px; font-weight: 800;" onclick="changeScalpParam('lots', -1)">-</button>
           <span id="scalp-param-lots" style="font-size: 0.95rem; font-weight: 900; min-width: 24px; text-align: center;">1</span>
           <button class="btn btn-secondary" style="padding: 2px 8px; font-weight: 800;" onclick="changeScalpParam('lots', 1)">+</button>
@@ -242,21 +264,26 @@
         </div>
 
         <!-- Stoploss Adjuster -->
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="font-size: 0.8rem; font-weight: 800; color: #DC2626;">સ્ટોપલોસ (SL):</span>
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span style="font-size: 0.8rem; font-weight: 800; color: #DC2626;">SL:</span>
           <button class="btn btn-secondary" style="padding: 2px 8px; font-weight: 800;" onclick="changeScalpParam('sl', -5)">-</button>
           <span id="scalp-param-sl" style="font-size: 0.95rem; font-weight: 900; min-width: 28px; text-align: center; color: #DC2626;">15</span>
           <button class="btn btn-secondary" style="padding: 2px 8px; font-weight: 800;" onclick="changeScalpParam('sl', 5)">+</button>
-          <span style="font-size: 0.75rem; color: #64748B; font-weight: 700;">Pts</span>
+          <span style="font-size: 0.73rem; color: #64748B; font-weight: 700;">Prem Pts</span>
         </div>
 
         <!-- Target Adjuster -->
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="font-size: 0.8rem; font-weight: 800; color: #16A34A;">ટાર્ગેટ (Target):</span>
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span style="font-size: 0.8rem; font-weight: 800; color: #16A34A;">Target:</span>
           <button class="btn btn-secondary" style="padding: 2px 8px; font-weight: 800;" onclick="changeScalpParam('tgt', -5)">-</button>
           <span id="scalp-param-tgt" style="font-size: 0.95rem; font-weight: 900; min-width: 28px; text-align: center; color: #16A34A;">30</span>
           <button class="btn btn-secondary" style="padding: 2px 8px; font-weight: 800;" onclick="changeScalpParam('tgt', 5)">+</button>
-          <span style="font-size: 0.75rem; color: #64748B; font-weight: 700;">Pts (1:2 R:R)</span>
+          <span style="font-size: 0.73rem; color: #64748B; font-weight: 700;">Prem Pts (1:2 R:R)</span>
+        </div>
+
+        <!-- Delta Info Badge -->
+        <div id="scalper-delta-badge" style="background: #EFF6FF; border: 1px solid #BFDBFE; color: #1D4ED8; font-size: 0.72rem; font-weight: 700; padding: 4px 8px; border-radius: 6px;">
+          Δ Delta: ~0.52 (Spot 30 pt ≈ Option ₹15.6)
         </div>
 
         <div style="font-size: 0.78rem; font-weight: 700; color: #475569; margin-left: auto;">
@@ -268,12 +295,12 @@
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
         <button id="btn-scalp-buy-ce" class="btn" style="background: #16A34A; color: #FFFFFF; padding: 14px; font-size: 1.05rem; font-weight: 900; border-radius: 8px; border: none; cursor: pointer; box-shadow: 0 4px 6px -1px rgba(22, 163, 74, 0.3); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;" onclick="executeScalpOrder('CE')">
           <span>🟢 BUY CALL (ATM CE)</span>
-          <span id="btn-label-ce-strike" style="font-size: 0.75rem; font-weight: 600; opacity: 0.9;">NIFTY 23650 CE (ભાવ: ₹115) | 1 Lot (75 Qty)</span>
+          <span id="btn-label-ce-strike" style="font-size: 0.75rem; font-weight: 600; opacity: 0.9;">NIFTY 23650 CE @ ₹115.1 | માર્જિન: ₹8,633 (1 Lot / 75 Qty)</span>
         </button>
 
         <button id="btn-scalp-buy-pe" class="btn" style="background: #DC2626; color: #FFFFFF; padding: 14px; font-size: 1.05rem; font-weight: 900; border-radius: 8px; border: none; cursor: pointer; box-shadow: 0 4px 6px -1px rgba(220, 38, 38, 0.3); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;" onclick="executeScalpOrder('PE')">
           <span>🔴 BUY PUT (ATM PE)</span>
-          <span id="btn-label-pe-strike" style="font-size: 0.75rem; font-weight: 600; opacity: 0.9;">NIFTY 23650 PE (ભાવ: ₹115) | 1 Lot (75 Qty)</span>
+          <span id="btn-label-pe-strike" style="font-size: 0.75rem; font-weight: 600; opacity: 0.9;">NIFTY 23650 PE @ ₹130.1 | માર્જિન: ₹9,758 (1 Lot / 75 Qty)</span>
         </button>
       </div>
 
@@ -283,52 +310,6 @@
 
   <!-- Main Grid -->
   
-  <!-- 5-Category Index & F&O Market Watch Explorer (As per user screenshots) -->
-  <section class="index-explorer-panel">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
-      <div>
-        <h2 style="font-size: 1.02rem; font-weight: 800; color: #0F172A; margin: 0; display: flex; align-items: center; gap: 8px;">
-          🌐 ભારતીય માર્કેટ વૉચ & ઇન્ડેક્સ એક્સપ્લોરર (5 Categories & F&O)
-        </h2>
-        <p style="font-size: 0.74rem; color: #64748B; margin: 3px 0 0 0;">
-          સ્ક્રીનશોટ મુજબ તમામ 5 કેટેગરી અને F&O ઓપ્શન્સ — કોઈપણ કાર્ડ પર ક્લિક કરી સીધો લાઈવ ચાર્ટ ખોલો
-        </p>
-      </div>
-      <span id="indices-count-badge" class="badge badge-paper" style="font-size: 0.74rem; font-weight: 700;">
-        65+ ઇન્ડેક્સ & F&O ઉપલબ્ધ
-      </span>
-    </div>
-
-    <!-- Category Tabs Navigation -->
-    <div class="index-cat-tabs">
-      <button id="cat-tab-key_indices" class="cat-tab-btn active" onclick="switchIndexCategory('key_indices')">
-        ⭐ મુખ્ય સૂચકાંકો (7)
-      </button>
-      <button id="cat-tab-sectoral" class="cat-tab-btn" onclick="switchIndexCategory('sectoral')">
-        🏭 સેક્ટોરલ ઇન્ડેક્સ (12)
-      </button>
-      <button id="cat-tab-market_cap" class="cat-tab-btn" onclick="switchIndexCategory('market_cap')">
-        🏢 માર્કેટ કેપ આધારિત (6)
-      </button>
-      <button id="cat-tab-nse_indices" class="cat-tab-btn" onclick="switchIndexCategory('nse_indices')">
-        📈 NSE ઇન્ડેક્સ (24)
-      </button>
-      <button id="cat-tab-bse_indices" class="cat-tab-btn" onclick="switchIndexCategory('bse_indices')">
-        🏛️ BSE ઇન્ડેક્સ (16)
-      </button>
-      <button id="cat-tab-fno_options" class="cat-tab-btn" onclick="switchIndexCategory('fno_options')">
-        ⚡ F&O ઓપ્શન્સ (CE/PE)
-      </button>
-    </div>
-
-    <!-- Category Items Cards Grid -->
-    <div id="index-category-grid" class="index-grid">
-      <div style="grid-column: 1 / -1; text-align: center; padding: 20px; color: #64748B; font-size: 0.85rem;">
-        ⏳ ઇન્ડેક્સ ડેટા લોડ થઈ રહ્યો છે...
-      </div>
-    </div>
-  </section>
-
   <div class="dashboard-grid">
     <!-- Left Column -->
     <div class="grid-column">
@@ -361,11 +342,11 @@
 
       <!-- Active Trades -->
       <div class="panel">
-        <div class="panel-header">
+        <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
           <div class="panel-title">
             ⚡ સક્રિય સોદા (Live Active Trades) <span id="active-trades-badge" class="badge-count">0</span>
           </div>
-          <span style="font-size:0.72rem; color:#10B981; font-weight:700;">⚡ Intraday MIS (3:15 PM Auto Square-off) • 25% સેફ પુલ</span>
+          <span style="font-size:0.72rem; color:#10B981; font-weight:700;">⚡ Intraday MIS (3:15 PM Auto Square-off) • 25% રિસ્ક પૂલ</span>
         </div>
         <div class="table-wrapper">
           <table>
@@ -387,47 +368,22 @@
             </tbody>
           </table>
         </div>
+        <div style="padding: 8px 12px; background: #F8FAFC; border-top: 1px solid #E2E8F0; font-size: 0.72rem; color: #475569;">
+          💡 <strong>સ્લિપેજ & ચાર્જીસ પારદર્શિતા:</strong> ₹48.50 રાઉન્ડ ટ્રીપ બ્રોકરેજ (₹20 Buy + ₹20 Sell + ₹7.20 GST + ₹1.30 STT) આપોઆપ ચોખ્ખા P&L માં ગણાયેલ છે.
+        </div>
       </div>
     </div>
 
-    <!-- Right Column -->
+    <!-- Right Column: System Logs -->
     <div class="grid-column">
-      <!-- Multi-Account Manager -->
-      <div class="panel">
-        <div class="panel-header">
-          <div class="panel-title">
-            👥 જોડાયેલા ડિમેટ એકાઉન્ટ્સ (Connected Accounts)
-          </div>
-          <button class="btn btn-secondary" style="padding:4px 10px; font-size:0.75rem;" onclick="openAddAccountModal()">
-            + Add Account (બીજું એકાઉન્ટ જોડો)
-          </button>
-        </div>
-        <div id="accounts-container">
-        </div>
-      </div>
-
-      <!-- Live News & Sentiment Catcher (100% Gujarati) -->
-      <div class="panel">
-        <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
-          <div class="panel-title">
-            📰 તાજા બજાર સમાચાર (100% ગુજરાતીમાં)
-          </div>
-          <button class="btn btn-secondary" style="padding: 3px 10px; font-size: 0.72rem; font-weight: 700; border: 1px solid #CBD5E1;" onclick="refreshNewsNow()">
-            🔄 હમણાં અપડેટ કરો (Live)
-          </button>
-        </div>
-        <div id="news-container">
-        </div>
-      </div>
-
-      <!-- Execution Logs -->
       <div class="panel">
         <div class="panel-header">
           <div class="panel-title">
             📝 સિસ્ટમ એક્ટિવિટી & સેફ્ટી લોગ્સ
           </div>
+          <span style="font-size: 0.72rem; color: #10B981; font-weight: 700;">🟢 Live Stream</span>
         </div>
-        <div id="log-stream" class="log-stream">
+        <div id="log-stream" class="log-stream" style="max-height: 480px; overflow-y: auto;">
         </div>
       </div>
     </div>
@@ -438,22 +394,14 @@
     <div class="panel-header" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px;">
       <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
         <div class="panel-title" style="margin-bottom: 0;">
-          📜 પૂર્ણ થયેલા સોદાઓની વિગતવાર ડાયરી (Trade History & Daily Journal)
+          📜 સોદા ડાયરી & ઇતિહાસ (Trade History & Daily Journal)
         </div>
         <span id="history-count-badge" class="badge-count">0 Trades</span>
         <span id="history-pnl-badge" style="font-size: 0.8rem; font-weight: 700; padding: 3px 10px; border-radius: 6px; background: #F1F5F9; color: #334155; border: 1px solid #CBD5E1;">
           Realized P&L: ₹0.00
         </span>
       </div>
-      <div style="display: flex; align-items: center; gap: 8px;">
-        <div class="btn-group" style="display: flex; background: #F1F5F9; border-radius: 6px; padding: 2px; border: 1px solid #CBD5E1;">
-          <button id="btn-hist-today" class="btn btn-secondary" style="padding: 4px 12px; font-size: 0.75rem; border: none; background: #FFFFFF; font-weight: 700; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);" onclick="setHistoryFilter('today')">
-            આજના સોદા (Today)
-          </button>
-          <button id="btn-hist-all" class="btn btn-secondary" style="padding: 4px 12px; font-size: 0.75rem; border: none; background: transparent; color: #64748B; border-radius: 4px;" onclick="setHistoryFilter('all')">
-            બધા સોદા (All)
-          </button>
-        </div>
+      <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
         <button class="btn btn-secondary" style="padding: 5px 12px; font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; gap: 6px; border: 1px solid #CBD5E1;" onclick="exportTradesCSV()">
           📥 Excel / CSV ડાઉનલોડ
         </button>
@@ -462,6 +410,28 @@
         </button>
       </div>
     </div>
+
+    <!-- PnL Performance Timeframe Filter & Reset Bar (Integrated into Trade History Journal) -->
+    <div class="pnl-filter-bar" style="display: flex; justify-content: space-between; align-items: center; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+      <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+        <span style="font-size: 0.78rem; font-weight: 800; color: #0F172A;">📊 સમયગાળો (Timeframe):</span>
+        <div class="timeframe-filters" style="display: flex; gap: 4px; flex-wrap: wrap;">
+          <button id="filter-btn-1" class="btn btn-primary" style="padding: 3px 9px; font-size: 0.74rem;" onclick="applyPnlFilter(1)">1D (આજે)</button>
+          <button id="filter-btn-2" class="btn btn-secondary" style="padding: 3px 9px; font-size: 0.74rem;" onclick="applyPnlFilter(2)">2D (2 દિવસ)</button>
+          <button id="filter-btn-7" class="btn btn-secondary" style="padding: 3px 9px; font-size: 0.74rem;" onclick="applyPnlFilter(7)">7D (1 અઠવાડિયું)</button>
+          <button id="filter-btn-30" class="btn btn-secondary" style="padding: 3px 9px; font-size: 0.74rem;" onclick="applyPnlFilter(30)">1M (1 મહિનો)</button>
+          <button id="filter-btn-90" class="btn btn-secondary" style="padding: 3px 9px; font-size: 0.74rem;" onclick="applyPnlFilter(90)">3M (3 મહિના)</button>
+          <button id="filter-btn-180" class="btn btn-secondary" style="padding: 3px 9px; font-size: 0.74rem;" onclick="applyPnlFilter(180)">6M (6 મહિના)</button>
+          <button id="filter-btn-365" class="btn btn-secondary" style="padding: 3px 9px; font-size: 0.74rem;" onclick="applyPnlFilter(365)">12M (1 વર્ષ)</button>
+        </div>
+      </div>
+      <div>
+        <button class="btn btn-secondary" style="padding: 3px 9px; font-size: 0.74rem; color: #DC2626; border-color: #FCA5A5;" onclick="resetAllPnLToZero()">
+          🔄 Reset to ₹0 (બધું 0 કરો)
+        </button>
+      </div>
+    </div>
+
     <div class="table-wrapper" style="max-height: 420px; overflow-y: auto;">
       <table>
         <thead>
@@ -486,7 +456,133 @@
         </tbody>
       </table>
     </div>
+    <div style="padding: 8px 12px; background: #F8FAFC; border-top: 1px solid #E2E8F0; font-size: 0.72rem; color: #64748B;">
+      💡 <strong>બ્રોકરેજ વિગત:</strong> ₹20 ખરીદ + ₹20 વેચાણ + ₹7.20 GST (18%) + ₹1.30 STT = ₹48.50 રાઉન્ડ ટ્રીપ ચાર્જીસ દરેક સોદાના ચોખ્ખા નફામાંથી આપોઆપ બાદ કરવામાં આવે છે.
+    </div>
   </div>
+  </div> <!-- end #tab-content-scalper -->
+
+  <!-- TAB 2: MARKET WATCH & 65+ INDICES EXPLORER -->
+  <div id="tab-content-marketwatch" class="tab-page-content" style="display: none;">
+    <section class="index-explorer-panel">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+        <div>
+          <h2 style="font-size: 1.02rem; font-weight: 800; color: #0F172A; margin: 0; display: flex; align-items: center; gap: 8px;">
+            🌐 ભારતીય માર્કેટ વૉચ & ઇન્ડેક્સ એક્સપ્લોરર (5 Categories & F&O)
+          </h2>
+          <p style="font-size: 0.74rem; color: #64748B; margin: 3px 0 0 0;">
+            તમામ 5 કેટેગરી અને F&O ઓપ્શન્સ — કોઈપણ કાર્ડ પર ક્લિક કરી સીધો લાઈવ ચાર્ટ ખોલો
+          </p>
+        </div>
+        <span id="indices-count-badge" class="badge badge-paper" style="font-size: 0.74rem; font-weight: 700;">
+          65+ ઇન્ડેક્સ & F&O ઉપલબ્ધ
+        </span>
+      </div>
+
+      <!-- Category Tabs Navigation -->
+      <div class="index-cat-tabs">
+        <button id="cat-tab-key_indices" class="cat-tab-btn active" onclick="switchIndexCategory('key_indices')">
+          ⭐ મુખ્ય સૂચકાંકો (7)
+        </button>
+        <button id="cat-tab-sectoral" class="cat-tab-btn" onclick="switchIndexCategory('sectoral')">
+          🏭 સેક્ટોરલ ઇન્ડેક્સ (12)
+        </button>
+        <button id="cat-tab-market_cap" class="cat-tab-btn" onclick="switchIndexCategory('market_cap')">
+          🏢 માર્કેટ કેપ આધારિત (6)
+        </button>
+        <button id="cat-tab-nse_indices" class="cat-tab-btn" onclick="switchIndexCategory('nse_indices')">
+          📈 NSE ઇન્ડેક્સ (24)
+        </button>
+        <button id="cat-tab-bse_indices" class="cat-tab-btn" onclick="switchIndexCategory('bse_indices')">
+          🏛️ BSE ઇન્ડેક્સ (16)
+        </button>
+        <button id="cat-tab-fno_options" class="cat-tab-btn" onclick="switchIndexCategory('fno_options')">
+          ⚡ F&O ઓપ્શન્સ (CE/PE)
+        </button>
+      </div>
+
+      <!-- Category Items Cards Grid -->
+      <div id="index-category-grid" class="index-grid">
+        <div style="grid-column: 1 / -1; text-align: center; padding: 20px; color: #64748B; font-size: 0.85rem;">
+          ⏳ ઇન્ડેક્સ ડેટા લોડ થઈ રહ્યો છે...
+        </div>
+      </div>
+    </section>
+
+    <!-- Native Lightweight Chart Container & Spot Explanation -->
+    <div class="panel" style="margin-top: 18px;">
+      <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+        <div style="font-size: 0.8rem; color: #1E40AF; font-weight: 700;">
+          📌 <strong>માર્ગદર્શન (Option vs Index Chart):</strong> આ ચાર્ટ ઇન્ડેક્સ સ્પોટ (દા.ત. NIFTY 50 / BANK NIFTY) નો છે. સિગ્નલ કન્ફર્મ થતાં અલ્ગો આપોઆપ તેના સુસંગત ATM Option (CE/PE) માં લાઈવ ટ્રેડ એક્ઝિક્યુટ કરશે.
+        </div>
+        <div style="display: flex; gap: 6px;">
+          <button class="btn btn-secondary" style="padding: 3px 8px; font-size: 0.72rem;" onclick="toggleChartIndicator('ema9')">EMA 9</button>
+          <button class="btn btn-secondary" style="padding: 3px 8px; font-size: 0.72rem;" onclick="toggleChartIndicator('ema21')">EMA 21</button>
+          <button class="btn btn-secondary" style="padding: 3px 8px; font-size: 0.72rem;" onclick="toggleChartIndicator('rsi')">RSI 14</button>
+          <button id="btn-chart-type" class="btn btn-secondary" style="padding: 3px 8px; font-size: 0.72rem;" onclick="toggleChartType()">Line 📈</button>
+        </div>
+      </div>
+      <div id="native-chart-wrapper" style="position: relative; height: 420px; width: 100%; border-radius: 8px 8px 0 0; border: 1.5px solid #CBD5E1; overflow: hidden; background: #FFFFFF; display: block;">
+        <div id="lightweight_chart_container" style="width: 100%; height: 100%;"></div>
+      </div>
+      <div id="rsi-subchart-wrapper" style="display: none; height: 95px; width: 100%; border: 1.5px solid #CBD5E1; border-top: none; border-radius: 0 0 8px 8px; background: #FAF5FF; position: relative;">
+        <div id="rsi_chart_container" style="width: 100%; height: 100%;"></div>
+      </div>
+    </div>
+  </div> <!-- end #tab-content-marketwatch -->
+
+  <!-- TAB 3: LIVE NEWS & SENTIMENT (100% Gujarati) -->
+  <div id="tab-content-news" class="tab-page-content" style="display: none;">
+    <div class="panel">
+      <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <div class="panel-title">
+          📰 તાજા બજાર સમાચાર (100% ગુજરાતીમાં)
+        </div>
+        <button class="btn btn-secondary" style="padding: 5px 14px; font-size: 0.78rem; font-weight: 700; border: 1px solid #CBD5E1;" onclick="refreshNewsNow()">
+          🔄 હમણાં અપડેટ કરો (Live Refresh)
+        </button>
+      </div>
+      <div id="news-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; padding: 10px 0;">
+      </div>
+    </div>
+  </div> <!-- end #tab-content-news -->
+
+  <!-- TAB 4: DEMAT ACCOUNTS & BROKER SETTINGS -->
+  <div id="tab-content-accounts" class="tab-page-content" style="display: none;">
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          👥 જોડાયેલા ડિમેટ એકાઉન્ટ્સ (Connected Accounts)
+        </div>
+        <button class="btn btn-primary" style="padding: 6px 14px; font-size: 0.78rem; font-weight: 700;" onclick="openAddAccountModal()">
+          + Add Account (નવું એકાઉન્ટ જોડો)
+        </button>
+      </div>
+      <div id="accounts-container" style="margin-top: 10px;">
+      </div>
+    </div>
+
+    <!-- Quick Broker Setup Card -->
+    <div class="panel" style="margin-top: 16px;">
+      <div class="panel-header">
+        <div class="panel-title">
+          🔌 બ્રોકર કનેક્શન (Groww / INDmoney / Angel One)
+        </div>
+        <button class="btn btn-secondary" style="padding: 5px 12px; font-size: 0.75rem;" onclick="openBrokerModal()">
+          સેટિંગ્સ ખોલો
+        </button>
+      </div>
+      <div style="padding: 12px; background: #F8FAFC; border-radius: 8px; border: 1px solid #E2E8F0;">
+        <p style="font-size: 0.82rem; color: #334155; margin: 0 0 8px 0; line-height: 1.5;">
+          તમારી સિસ્ટમ <strong>Groww & INDmoney</strong> સાથે સુસંગત છે. સાથે Angel One SmartAPI, Zerodha, DhanAPI પણ સપોર્ટ કરે છે.
+        </p>
+        <button class="btn btn-secondary" onclick="openBrokerModal()" style="font-size: 0.78rem; padding: 6px 14px; font-weight: 700; background: #F0FDF4; border-color: #86EFAC; color: #166534;">
+          બ્રોકર API વિગતો બદલો / કનેક્ટ કરો
+        </button>
+      </div>
+    </div>
+  </div> <!-- end #tab-content-accounts -->
+
   </div> <!-- end #app-dashboard -->
 
   <!-- Add Account Modal -->
@@ -799,6 +895,6 @@
     </div>
   </div>
 
-  <script src="/static/app.js?v=20260908_10"></script>
+  <script src="/static/app.js?v=20260908_20"></script>
 </body>
 </html>

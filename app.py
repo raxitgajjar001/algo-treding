@@ -508,26 +508,34 @@ import csv
 def get_trade_history(filter: str = "today"):
     import datetime
     trades = engine.trade_history
-    if filter == "today":
+    if filter == "today" or filter == "1":
         today_str = datetime.datetime.now().strftime("%Y-%m-%d")
         trades = [
             t for t in trades 
             if (t.get("exit_date") and str(t.get("exit_date")).startswith(today_str)) or 
                (t.get("exit_time") and datetime.datetime.fromtimestamp(t.get("exit_time")).strftime("%Y-%m-%d") == today_str)
         ]
+    elif filter.isdigit():
+        days = int(filter)
+        cutoff = time.time() - (days * 86400)
+        trades = [t for t in trades if t.get('exit_time', 0) >= cutoff]
     return trades
 
 @app.get('/api/trades/export-csv')
 def export_trades_csv(filter: str = "all"):
     import datetime
     trades = engine.trade_history
-    if filter == "today":
+    if filter == "today" or filter == "1":
         today_str = datetime.datetime.now().strftime("%Y-%m-%d")
         trades = [
             t for t in trades 
             if (t.get("exit_date") and str(t.get("exit_date")).startswith(today_str)) or 
                (t.get("exit_time") and datetime.datetime.fromtimestamp(t.get("exit_time")).strftime("%Y-%m-%d") == today_str)
         ]
+    elif filter.isdigit():
+        days = int(filter)
+        cutoff = time.time() - (days * 86400)
+        trades = [t for t in trades if t.get('exit_time', 0) >= cutoff]
     
     output = io.StringIO()
     writer = csv.writer(output)
@@ -564,6 +572,32 @@ def export_trades_csv(filter: str = "all"):
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
 
+@app.get('/api/scalper/quotes')
+def scalper_quotes_route(symbol: str = "NIFTY", lots: int = 1):
+    from angel_one_service import angel_one_service
+    und = symbol.upper()
+    spot = 23553.0
+    try:
+        spot = float(REAL_LIVE_TICKS_CACHE.get("ticks", {}).get(und, {}).get("ltp", 23553.0))
+    except Exception:
+        pass
+    ce_info = angel_one_service.get_atm_option_details(und, spot, "CE")
+    pe_info = angel_one_service.get_atm_option_details(und, spot, "PE")
+    lot_size = ce_info["lot_size"]
+    total_qty = lots * lot_size
+    ce_margin = round(ce_info["estimated_premium"] * total_qty, 2)
+    pe_margin = round(pe_info["estimated_premium"] * total_qty, 2)
+    return {
+        "underlying": und,
+        "spot": spot,
+        "strike": ce_info["strike"],
+        "lot_size": lot_size,
+        "lots": lots,
+        "total_qty": total_qty,
+        "ce": {**ce_info, "required_margin": ce_margin},
+        "pe": {**pe_info, "required_margin": pe_margin}
+    }
+
 @app.post('/api/scalper/order')
 def scalper_order_route(payload: Dict[str, Any]):
     und = payload.get("symbol", "NIFTY")
@@ -571,7 +605,8 @@ def scalper_order_route(payload: Dict[str, Any]):
     lots = int(payload.get("lots", 1))
     sl_pts = float(payload.get("sl_pts", 15.0))
     tgt_pts = float(payload.get("tgt_pts", 30.0))
-    res = engine.place_scalper_trade(und, opt_type, lots, sl_pts, tgt_pts)
+    order_type = payload.get("order_type", "LIMIT")
+    res = engine.place_scalper_trade(und, opt_type, lots, sl_pts, tgt_pts, order_type)
     return res
 
 @app.post('/api/trades/close/{trade_id}')
