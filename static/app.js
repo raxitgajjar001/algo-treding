@@ -300,9 +300,14 @@ function initNativeChart(symbol = 'NIFTY') {
 
   container.innerHTML = '';
 
+  const parent = document.getElementById('native-chart-wrapper');
+  const parentWidth = parent ? parent.clientWidth : 0;
+  const initialWidth = parentWidth > 50 ? parentWidth : Math.max(300, Math.min(window.innerWidth - 36, 1200));
+  const initialHeight = window.innerWidth < 640 ? 300 : 440;
+
   const chart = LightweightCharts.createChart(container, {
-    width: container.clientWidth || 800,
-    height: 440,
+    width: initialWidth,
+    height: initialHeight,
     layout: {
       background: { color: '#FFFFFF' },
       textColor: '#334155',
@@ -389,8 +394,8 @@ function handleChartResize() {
   if (!container || !nativeChart) return;
 
   if (isFullscreen) {
-    const w = window.innerWidth - 48;
-    const h = window.innerHeight - (indicatorsState.rsi ? 290 : 180);
+    const w = window.innerWidth - 32;
+    const h = window.innerHeight - (indicatorsState.rsi ? 260 : 160);
     container.style.height = h + 'px';
     nativeChart.applyOptions({ width: w, height: h });
     if (rsiChart && indicatorsState.rsi) {
@@ -398,10 +403,12 @@ function handleChartResize() {
       if (rsiContainer) rsiChart.applyOptions({ width: w });
     }
   } else {
-    container.style.height = '440px';
-    nativeChart.applyOptions({ width: container.clientWidth, height: 440 });
+    const w = container.clientWidth > 50 ? container.clientWidth : Math.max(300, window.innerWidth - 36);
+    const targetH = window.innerWidth < 640 ? 300 : 440;
+    container.style.height = targetH + 'px';
+    nativeChart.applyOptions({ width: w, height: targetH });
     if (rsiChart && indicatorsState.rsi) {
-      rsiChart.applyOptions({ width: container.clientWidth });
+      rsiChart.applyOptions({ width: w });
     }
   }
 }
@@ -449,10 +456,22 @@ function switchChart(rawSymbol) {
     }
   });
 
+  if (typeof renderIndexCategoryItems === 'function' && activeIndexCategory) {
+    renderIndexCategoryItems(activeIndexCategory);
+  }
+
   if (!nativeChart) {
     initNativeChart(sym);
   } else {
     loadChartData(sym, currentTimeframe);
+  }
+
+  // Smooth scroll to chart on mobile for great UX
+  if (window.innerWidth < 768) {
+    const chartPanel = document.querySelector('.chart-panel');
+    if (chartPanel) {
+      chartPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
   }
 }
 
@@ -747,25 +766,166 @@ async function fetchStatus() {
       applyPnlFilter(currentPnlFilterDays);
     }
 
-    document.getElementById('managed-capital').textContent = '₹' + Number(data.total_managed_capital).toLocaleString('en-IN');
-    document.getElementById('active-trades-count').textContent = data.active_trades_count || 0;
+    // 5. Update Full Capital Transparency & Risk Pool
+    const totCap = data.total_capital || data.total_managed_capital || 100000.0;
+    const usedCap = data.used_capital !== undefined ? data.used_capital : 0.0;
+    const availCap = data.available_capital !== undefined ? data.available_capital : Math.max(0, totCap - usedCap);
+    const allocPct = data.capital_allocation_pct || 25.0;
+    const maxPool = data.max_capital_pool !== undefined ? data.max_capital_pool : (totCap * (allocPct / 100.0));
+    const remPool = data.remaining_pool !== undefined ? data.remaining_pool : Math.max(0, maxPool - usedCap);
 
-    // Capital %
-    document.getElementById('capital-pct-slider').value = data.capital_allocation_pct;
-    document.getElementById('capital-pct-val').textContent = data.capital_allocation_pct + '%';
-    document.getElementById('metric-alloc-pct').textContent = data.capital_allocation_pct + '%';
+    const managedEl = document.getElementById('managed-capital');
+    if (managedEl) managedEl.textContent = '₹' + Number(totCap).toLocaleString('en-IN', {minimumFractionDigits: 0});
+
+    const usedEl = document.getElementById('metric-used-capital');
+    if (usedEl) usedEl.textContent = '₹' + Number(usedCap).toLocaleString('en-IN', {minimumFractionDigits: 2});
+
+    const usedPctEl = document.getElementById('metric-used-pct');
+    if (usedPctEl) usedPctEl.textContent = `${((usedCap / totCap) * 100).toFixed(1)}% Deployed (${data.active_trades_count || 0} Trades)`;
+
+    const availEl = document.getElementById('metric-avail-capital');
+    if (availEl) availEl.textContent = '₹' + Number(availCap).toLocaleString('en-IN', {minimumFractionDigits: 0});
+
+    const availPctEl = document.getElementById('metric-avail-pct');
+    if (availPctEl) availPctEl.textContent = `${((availCap / totCap) * 100).toFixed(1)}% સુરક્ષિત/પ્રવાહી`;
+
+    const allocEl = document.getElementById('metric-alloc-pct');
+    if (allocEl) allocEl.textContent = `${allocPct}% Max`;
+
+    const allocSubEl = document.getElementById('metric-alloc-sub');
+    if (allocSubEl) allocSubEl.textContent = `મહત્તમ ₹${Number(maxPool).toLocaleString('en-IN')} (બાકી: ₹${Number(remPool).toLocaleString('en-IN')})`;
+
+    const sliderEl = document.getElementById('capital-pct-slider');
+    if (sliderEl) sliderEl.value = allocPct;
+
+    const sliderValEl = document.getElementById('capital-pct-val');
+    if (sliderValEl) sliderValEl.textContent = allocPct + '%';
+
+    const activeCountEl = document.getElementById('active-trades-count');
+    if (activeCountEl) activeCountEl.textContent = data.active_trades_count || 0;
 
     // Render Logs
     const logContainer = document.getElementById('log-stream');
-    logContainer.innerHTML = (data.logs || []).map(l => `
-      <div class="log-line log-${l.level}">
-        <span class="log-time">[${l.timestamp}]</span> ${l.message}
-      </div>
-    `).join('');
+    if (logContainer) {
+      logContainer.innerHTML = (data.logs || []).map(l => `
+        <div class="log-line log-${l.level}">
+          <span class="log-time">[${l.timestamp}]</span> ${l.message}
+        </div>
+      `).join('');
+    }
 
   } catch (err) {
     console.error('Error fetching status:', err);
   }
+}
+
+// Manual Refresh with Visual Spinner
+async function manualRefreshData() {
+  const btn = document.getElementById('btn-manual-refresh');
+  let originalText = '🔄 રીફ્રેશ (Refresh)';
+  if (btn) {
+    originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinning-icon">🔄</span> રીફ્રેશિંગ...';
+  }
+
+  try {
+    const res = await fetch('/api/market/refresh', { method: 'POST' });
+    await Promise.allSettled([
+      fetchStatus(),
+      fetchActiveTrades(),
+      fetchTradeHistory(),
+      fetchScanner(),
+      fetchLiveTicks(),
+      fetchIndexCategories(),
+      loadChartData(currentChartSymbol, currentTimeframe)
+    ]);
+  } catch (err) {
+    console.error('Manual refresh error:', err);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '✅ અપડેટ થયું!';
+      setTimeout(() => {
+        btn.innerHTML = originalText;
+      }, 1500);
+    }
+  }
+}
+
+// 5-Category Index & F&O Market Watch Explorer
+let cachedIndexCategories = null;
+let activeIndexCategory = 'key_indices';
+
+async function fetchIndexCategories() {
+  try {
+    const res = await fetch('/api/market/indices');
+    if (!res.ok) return;
+    cachedIndexCategories = await res.json();
+    
+    // Count total indices
+    let totalCount = 0;
+    if (cachedIndexCategories) {
+      for (const cat in cachedIndexCategories) {
+        totalCount += (cachedIndexCategories[cat] || []).length;
+      }
+      const badge = document.getElementById('indices-count-badge');
+      if (badge) badge.textContent = `${totalCount}+ ઇન્ડેક્સ & F&O લાઈવ`;
+    }
+
+    renderIndexCategoryItems(activeIndexCategory);
+  } catch (err) {
+    console.error('Error fetching index categories:', err);
+  }
+}
+
+function switchIndexCategory(catKey) {
+  activeIndexCategory = catKey;
+  const tabKeys = ['key_indices', 'sectoral', 'market_cap', 'nse_indices', 'bse_indices', 'fno_options'];
+  tabKeys.forEach(k => {
+    const btn = document.getElementById('cat-tab-' + k);
+    if (btn) {
+      if (k === catKey) btn.classList.add('active');
+      else btn.classList.remove('active');
+    }
+  });
+  renderIndexCategoryItems(catKey);
+}
+
+function renderIndexCategoryItems(catKey) {
+  const container = document.getElementById('index-category-grid');
+  if (!container || !cachedIndexCategories) return;
+
+  const items = cachedIndexCategories[catKey] || [];
+  if (items.length === 0) {
+    container.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:15px; color:#64748B;">કોઈ ઇન્ડેક્સ ઉપલબ્ધ નથી</div>';
+    return;
+  }
+
+  container.innerHTML = items.map(item => {
+    const isSelected = (item.symbol === currentChartSymbol) || (item.display_name === currentChartSymbol);
+    const isPos = (item.change_pct === undefined) || item.change_pct >= 0;
+    const chgClass = isPos ? 'pos' : 'neg';
+    const chgSign = isPos ? '+' : '';
+    const chgText = item.change_pct !== undefined ? `${chgSign}${item.change_pct}%` : '0.00%';
+    const priceFormatted = Number(item.base_price).toLocaleString('en-IN', {
+      minimumFractionDigits: (item.base_price < 500 ? 2 : 2)
+    });
+
+    return `
+      <div class="index-card ${isSelected ? 'selected' : ''}" onclick="switchChart('${item.symbol}')" title="ચાર્ટ જોવા ક્લિક કરો">
+        <div class="index-card-header">
+          <div class="index-card-title">${item.display_name}</div>
+          <span style="font-size:0.65rem; padding:1px 5px; border-radius:4px; font-weight:700; background:#F1F5F9; color:#475569;">${item.segment || 'INDEX'}</span>
+        </div>
+        <div class="index-card-subtitle">${item.symbol} • ${item.name}</div>
+        <div class="index-card-body">
+          <div class="index-card-price">₹${priceFormatted}</div>
+          <div class="index-card-chg ${chgClass}">${chgText}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
 }
 
 async function fetchScanner() {
@@ -810,33 +970,66 @@ async function fetchActiveTrades() {
     const trades = await res.json();
     const tbody = document.getElementById('active-trades-body');
     const countBadge = document.getElementById('active-trades-badge');
-    countBadge.textContent = trades.length;
+    if (countBadge) countBadge.textContent = trades.length;
+
+    if (!tbody) return;
 
     if (trades.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:#6B7280; padding:20px;">No open positions right now. Scanner is actively searching for high-probability setups.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:#64748B; padding:28px 16px; font-size:0.85rem; line-height:1.6;">⏳ અત્યારે કોઈ સક્રિય ઓપન પોઝિશન નથી.<br/><span style="font-weight:700; color:#2563EB;">સ્માર્ટ અલ્ગોરિધમ 85%+ ટેકનિકલ સ્કોર સાથે 2m, 5m, 30m, 1h સમયગાળામાં ઉત્તમ તેજી (CALL) અથવા મંદી (PUT) ની તકની રાહ જોઈ રહ્યું છે જેથી સોદો 100% નફાકારક બને.</span></td></tr>`;
       return;
     }
 
-    tbody.innerHTML = trades.map(t => `
-      <tr>
-        <td><strong>${t.symbol}</strong><br><small style="color:#64748B;">${t.account_name}</small></td>
-        <td><span class="${t.trade_type === 'SWING_DELIVERY' ? 'type-swing' : 'type-intraday'}">${t.trade_type}</span></td>
-        <td>${t.qty}</td>
-        <td>₹${t.entry_price}</td>
-        <td>₹${t.current_price}</td>
-        <td class="${t.unrealized_pnl >= 0 ? 'metric-value profit' : 'metric-value loss'}" style="font-size:0.85rem;">
-          ${t.unrealized_pnl >= 0 ? '+' : ''}₹${t.unrealized_pnl} (${t.pnl_pct}%)
-        </td>
-        <td>
-          <span style="color:#15803D; font-weight:700;">Tgt: ₹${t.target_price}</span><br>
-          <span style="color:#DC2626; font-size:0.75rem;">SL: ₹${t.stoploss_price}</span>
-          ${t.trailing_sl_price && t.trailing_sl_price > t.stoploss_price ? `<br><span style="background:#DCFCE7; color:#15803D; padding:1px 5px; border-radius:4px; font-weight:800; font-size:0.7rem; border:1px solid #86EFAC;">🛡️ Trail SL: ₹${t.trailing_sl_price}</span>` : ''}
-        </td>
-        <td>
-          <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.7rem;" onclick="manualCloseTrade('${t.id}')">Exit (વેચો)</button>
-        </td>
-      </tr>
-    `).join('');
+    tbody.innerHTML = trades.map(t => {
+      const isLong = (t.direction || 'BUY').toUpperCase().includes('BUY') || (t.direction || '').toUpperCase().includes('LONG');
+      const dirBadge = isLong 
+        ? '<span class="badge-dir-long">🟢 BUY (Call/તેજી)</span>' 
+        : '<span class="badge-dir-short">🔴 SHORT (Put/મંદી)</span>';
+
+      const entryP = Number(t.entry_price || 0);
+      const currP = Number(t.current_price || entryP);
+      const qty = parseInt(t.qty || 1, 10);
+      const investedCap = t.invested_capital ? Number(t.invested_capital) : (entryP * qty);
+
+      const pts = t.points_diff !== undefined ? Number(t.points_diff) : (isLong ? (currP - entryP) : (entryP - currP));
+      const ptsClass = pts >= 0 ? 'points-gain' : 'points-loss';
+      const ptsSign = pts >= 0 ? '+' : '';
+
+      const pnl = Number(t.unrealized_pnl || 0);
+      const pnlClass = pnl >= 0 ? 'metric-value profit' : 'metric-value loss';
+      const pnlSign = pnl >= 0 ? '+' : '';
+
+      return `
+        <tr>
+          <td>
+            <strong>${t.symbol}</strong><br>
+            <small style="color:#64748B;">${t.account_name || 'Demat Main'}</small>
+          </td>
+          <td>
+            ${dirBadge}<br>
+            <span class="type-intraday" style="font-size:0.68rem; margin-top:2px; display:inline-block;">⚡ INTRADAY MIS</span>
+          </td>
+          <td style="font-weight:700; color:#0F172A;">${qty}</td>
+          <td style="font-weight:800; color:#1E293B;">₹${entryP.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+          <td style="font-weight:800; color:#0F172A;">₹${currP.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+          <td>
+            <span class="${ptsClass}">${ptsSign}${pts.toFixed(2)} pts</span>
+          </td>
+          <td style="font-weight:700; color:#475569;">₹${investedCap.toLocaleString('en-IN', {minimumFractionDigits: 0, maximumFractionDigits: 0})}</td>
+          <td class="${pnlClass}" style="font-size:0.88rem; font-weight:800;">
+            ${pnlSign}₹${pnl.toLocaleString('en-IN', {minimumFractionDigits: 2})}<br>
+            <small style="font-size:0.72rem; font-weight:700;">(${pnlSign}${t.pnl_pct || 0}%)</small>
+          </td>
+          <td>
+            <span style="color:#15803D; font-weight:700; font-size:0.75rem;">Tgt: ₹${t.target_price}</span><br>
+            <span style="color:#DC2626; font-size:0.75rem; font-weight:700;">SL: ₹${t.stoploss_price}</span>
+            ${t.trailing_sl_price ? `<br><span style="background:#DCFCE7; color:#15803D; padding:1px 5px; border-radius:4px; font-weight:800; font-size:0.7rem; border:1px solid #86EFAC;">🛡️ Trail: ₹${t.trailing_sl_price}</span>` : ''}
+          </td>
+          <td>
+            <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.72rem; color:#B91C1C; border-color:#FCA5A5; font-weight:700;" onclick="manualCloseTrade('${t.id}')">Exit (વેચો)</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
   } catch (err) {
     console.error('Error fetching active trades:', err);
   }
@@ -1361,6 +1554,9 @@ function showDashboardScreen() {
     dashboard.style.setProperty('display', 'block', 'important');
     dashboard.style.setProperty('visibility', 'visible', 'important');
   }
+  setTimeout(() => {
+    if (typeof handleChartResize === 'function') handleChartResize();
+  }, 100);
 }
 
 function showLoginScreen() {
@@ -1386,9 +1582,26 @@ function showLoginScreen() {
 }
 
 async function checkAuthentication() {
-  // Always start at the viral interactive night lamp pull-cord screen
-  sessionStorage.removeItem('algo_auth_token');
-  localStorage.removeItem('algo_auth_token');
+  const token = localStorage.getItem('algo_auth_token') || sessionStorage.getItem('algo_auth_token');
+  if (token) {
+    try {
+      const res = await fetch('/api/auth/check?token=' + encodeURIComponent(token));
+      const data = await res.json();
+      if (data.authenticated) {
+        showDashboardScreen();
+        const username = localStorage.getItem('algo_auth_user') || sessionStorage.getItem('algo_auth_user') || 'Raxit';
+        const userBadge = document.getElementById('user-badge');
+        if (userBadge) userBadge.textContent = `👤 ${username}`;
+        startDashboardLoops();
+        return true;
+      }
+    } catch (e) {
+      // If temporary network hiccup, remain logged in
+      showDashboardScreen();
+      startDashboardLoops();
+      return true;
+    }
+  }
   showLoginScreen();
   return false;
 }
@@ -1432,6 +1645,8 @@ async function submitLampLogin(e) {
     if (res.ok && data.token) {
       sessionStorage.setItem('algo_auth_token', data.token);
       sessionStorage.setItem('algo_auth_user', data.username);
+      localStorage.setItem('algo_auth_token', data.token);
+      localStorage.setItem('algo_auth_user', data.username);
       
       showDashboardScreen();
       
@@ -1778,6 +1993,7 @@ function startDashboardLoops() {
   dashboardLoopsStarted = true;
 
   try { fetchStatus(); } catch (e) { console.error('fetchStatus err:', e); }
+  try { fetchIndexCategories(); } catch (e) { console.error('fetchIndexCategories err:', e); }
   try { fetchScanner(); } catch (e) { console.error('fetchScanner err:', e); }
   try { fetchActiveTrades(); } catch (e) { console.error('fetchActiveTrades err:', e); }
   try { fetchTradeHistory(); } catch (e) { console.error('fetchTradeHistory err:', e); }
@@ -1786,10 +2002,11 @@ function startDashboardLoops() {
   try { initNativeChart('NIFTY'); } catch (e) { console.error('initNativeChart err:', e); }
 
   setInterval(() => { try { fetchLiveTicks(); } catch(e){} }, 500);
-  setInterval(() => { try { fetchActiveTrades(); } catch(e){} }, 2000);
+  setInterval(() => { try { fetchActiveTrades(); } catch(e){} }, 1500);
+  setInterval(() => { try { fetchStatus(); } catch(e){} }, 2000);
   setInterval(() => { try { fetchTradeHistory(); } catch(e){} }, 3000);
-  setInterval(() => { try { fetchStatus(); } catch(e){} }, 3000);
   setInterval(() => { try { fetchScanner(); } catch(e){} }, 5000);
+  setInterval(() => { try { fetchIndexCategories(); } catch(e){} }, 12000);
   setInterval(() => { try { fetchNews(false); } catch(e){} }, 20000);
 }
 

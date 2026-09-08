@@ -1,4 +1,4 @@
-﻿import os
+import os
 import json
 from pathlib import Path
 
@@ -14,17 +14,15 @@ NEWS_CACHE_FILE = DATA_DIR / "news_cache.json"
 DEFAULT_SETTINGS = {
     "engine_active": False,
     "mode": "PAPER",  # "PAPER" or "LIVE"
-    "capital_allocation_pct": 10.0,  # User selected % of capital per trade
-    "max_daily_loss": 2000.0,
+    "capital_allocation_pct": 25.0,  # Max % of total capital across ALL active trades combined (e.g. 25%)
+    "max_daily_loss": 2500.0,
     "max_concurrent_trades": 5,
-    "intraday_target_pct": 2.0,
-    "intraday_stoploss_pct": 1.0,
-    "swing_target_pct": 6.0,
-    "swing_stoploss_pct": 2.5,
-    "max_swing_holding_days": 7,
+    "intraday_target_pct": 1.8,
+    "intraday_stoploss_pct": 0.9,
     "intraday_squareoff_time": "15:15",
-    "min_confidence_score": 80,
-    "auto_swing_enabled": True
+    "min_confidence_score": 85,  # High-accuracy confirmation threshold
+    "auto_swing_enabled": False,  # STRICTLY INTRADAY ONLY (No overnight holding)
+    "product": "INTRADAY"
 }
 
 def get_settings():

@@ -17,7 +17,7 @@
   <link rel="manifest" href="/static/manifest.json" />
   <meta name="theme-color" content="#0f172a" />
 
-  <link rel="stylesheet" href="/static/style.css?v=20260907_26" />
+  <link rel="stylesheet" href="/static/style.css?v=20260908_02" />
   <script src="/static/lightweight-charts.js"></script>
 </head>
 <body>
@@ -35,6 +35,7 @@
       <span id="market-status-badge" class="badge badge-bearish" style="font-weight: 800; font-size: 0.82rem;">🔴 MARKET CLOSED</span>
       <span id="mode-badge" class="badge badge-paper">PAPER TRADING (ડેમો મોડ)</span>
       <button class="btn btn-secondary" onclick="toggleMode()">🔄 Switch Mode (મોડ બદલો)</button>
+      <button class="btn btn-secondary" onclick="manualRefreshData()" id="btn-manual-refresh" style="font-size:0.75rem; padding:6px 11px; background:#EFF6FF; border-color:#93C5FD; color:#1D4ED8; font-weight:700;">🔄 રીફ્રેશ (Refresh)</button>
       <button class="btn btn-secondary" onclick="openChangePasswordModal()" style="font-size:0.75rem; padding:6px 10px;">🔑 પાસવર્ડ બદલો</button>
       <button class="btn btn-secondary" onclick="logoutUser()" style="font-size:0.75rem; padding:6px 10px; color:#B91C1C; border-color:#FCA5A5;">🚪 Logout</button>
       <button class="btn btn-danger" onclick="emergencyKill()">🚨 Emergency Kill</button>
@@ -55,28 +56,26 @@
   <div class="indian-market-ribbon" style="display: flex; gap: 12px; overflow-x: auto; margin-bottom: 18px; padding: 10px 14px; background: #FFFFFF; border: 1.5px solid #CBD5E1; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
     <div class="index-pill" onclick="switchChart('NSE:NIFTY')" style="cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 4px 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px;">
       <span style="font-weight: 800; color: #0F172A; font-size: 0.85rem;">🇮🇳 NIFTY 50</span>
-      <span id="ticker-nifty" style="font-weight: 700; color: #15803D; font-size: 0.85rem;">₹25,182.40 (+0.48%)</span>
+      <span id="ticker-nifty" style="font-weight: 700; color: #15803D; font-size: 0.85rem;">₹23,693.55 (-0.36%)</span>
     </div>
     <div class="index-pill" onclick="switchChart('NSE:BANKNIFTY')" style="cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 4px 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px;">
       <span style="font-weight: 800; color: #0F172A; font-size: 0.85rem;">🇮🇳 BANK NIFTY</span>
-      <span id="ticker-banknifty" style="font-weight: 700; color: #15803D; font-size: 0.85rem;">₹51,435.10 (+0.65%)</span>
+      <span id="ticker-banknifty" style="font-weight: 700; color: #15803D; font-size: 0.85rem;">₹56,951.90 (-0.24%)</span>
     </div>
     <div class="index-pill" onclick="switchChart('BSE:SENSEX')" style="cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 4px 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px;">
       <span style="font-weight: 800; color: #0F172A; font-size: 0.85rem;">🇮🇳 SENSEX</span>
-      <span id="ticker-sensex" style="font-weight: 700; color: #15803D; font-size: 0.85rem;">₹82,360.80 (+0.42%)</span>
+      <span id="ticker-sensex" style="font-weight: 700; color: #15803D; font-size: 0.85rem;">₹75,802.23 (-0.43%)</span>
     </div>
     <div class="index-pill" onclick="switchChart('NSE:FINNIFTY')" style="cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 4px 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px;">
       <span style="font-weight: 800; color: #0F172A; font-size: 0.85rem;">🇮🇳 FIN NIFTY</span>
-      <span id="ticker-finnifty" style="font-weight: 700; color: #15803D; font-size: 0.85rem;">₹23,910.50 (+0.52%)</span>
+      <span id="ticker-finnifty" style="font-weight: 700; color: #15803D; font-size: 0.85rem;">₹25,210.00 (-0.35%)</span>
     </div>
     <div class="index-pill" onclick="switchChart('NSE:INDIAVIX')" style="cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 4px 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px;">
       <span style="font-weight: 800; color: #0F172A; font-size: 0.85rem;">🇮🇳 INDIA VIX</span>
-      <span id="ticker-vix" style="font-weight: 700; color: #B45309; font-size: 0.85rem;">13.42 (-2.1%)</span>
+      <span id="ticker-vix" style="font-weight: 700; color: #B45309; font-size: 0.85rem;">11.15 (-0.09%)</span>
     </div>
   </div>
 
-
-  
   <!-- PnL Performance Timeframe Filter & Reset Bar -->
   <div class="pnl-filter-bar" style="display: flex; justify-content: space-between; align-items: center; background: #FFFFFF; border: 1.5px solid #CBD5E1; border-radius: 10px; padding: 10px 16px; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
     <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
@@ -98,38 +97,44 @@
     </div>
   </div>
 
-  <!-- KPI Metrics -->
+  <!-- KPI Metrics (Complete Live Capital & P&L Transparency) -->
   <section class="metrics-grid">
     <div id="pnl-card" class="metric-card pnl-card">
       <div class="metric-label">કુલ નફો / નુકસાન (Net P&L)</div>
       <div id="net-pnl" class="metric-value profit">₹0.00</div>
       <div class="metric-sub">
-        <span id="realized-pnl">Realized: ₹0</span> • <span id="unrealized-pnl">Open: ₹0</span>
+        <span id="realized-pnl">Realized: ₹0</span> • <span id="unrealized-pnl">Live Open: ₹0</span>
       </div>
     </div>
 
     <div class="metric-card">
-      <div class="metric-label">ચોકસાઈ / વિન રેટ (Win Rate)</div>
-      <div id="win-rate" class="metric-value" style="color: #3B82F6;">0%</div>
+      <div class="metric-label">કુલ મૂડી (Total Capital)</div>
+      <div id="managed-capital" class="metric-value" style="color: #2563EB;">₹1,00,000</div>
+      <div class="metric-sub">કુલ સક્રિય ડિમેટ બેલેન્સ</div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-label">વપરાયેલી મૂડી (Used Margin)</div>
+      <div id="metric-used-capital" class="metric-value" style="color: #D97706;">₹0.00</div>
+      <div id="metric-used-pct" class="metric-sub">0.0% Deployed</div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-label">ઉપલબ્ધ મૂડી (Available Capital)</div>
+      <div id="metric-avail-capital" class="metric-value" style="color: #16A34A;">₹1,00,000</div>
+      <div id="metric-avail-pct" class="metric-sub">100% સુરક્ષિત/પ્રવાહી</div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-label">મૂડી ફાળવણી (Risk Pool Cap)</div>
+      <div id="metric-alloc-pct" class="metric-value" style="color: #9333EA;">25% Max</div>
+      <div class="metric-sub" id="metric-alloc-sub">મહત્તમ ₹25,000 મર્યાદા</div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-label">ચોકસાઈ / વિન રેટ (Accuracy)</div>
+      <div id="win-rate" class="metric-value" style="color: #0284C7;">0%</div>
       <div id="win-counts" class="metric-sub">0 Trades Executed</div>
-    </div>
-
-    <div class="metric-card">
-      <div class="metric-label">કુલ સક્રિય મૂડી (Total Capital)</div>
-      <div id="managed-capital" class="metric-value" style="color: #F59E0B;">₹1,00,000</div>
-      <div class="metric-sub">બધા સક્રિય એકાઉન્ટ્સનું બેલેન્સ</div>
-    </div>
-
-    <div class="metric-card">
-      <div class="metric-label">ટ્રેડ દીઠ મૂડી % (Alloc / Trade)</div>
-      <div id="metric-alloc-pct" class="metric-value" style="color: #10B981;">10%</div>
-      <div class="metric-sub">એક ટ્રેડમાં નિર્ધારિત ટકાવારી</div>
-    </div>
-
-    <div class="metric-card">
-      <div class="metric-label">ખુલ્લા સોદા (Active Trades)</div>
-      <div id="active-trades-count" class="metric-value">0</div>
-      <div class="metric-sub">3:15 PM અથવા Target પર Auto-Exit</div>
     </div>
   </section>
 
@@ -146,15 +151,61 @@
 
     <div class="control-group">
       <div class="slider-container">
-        <label for="capital-pct-slider">ટ્રેડ દીઠ કેપિટલ %:</label>
-        <input type="range" id="capital-pct-slider" min="1" max="100" step="1" value="10" onchange="updateCapitalPct(this.value)" oninput="document.getElementById('capital-pct-val').textContent = this.value + '%'" />
-        <span id="capital-pct-val" class="slider-value">10%</span>
+        <label for="capital-pct-slider">મહત્તમ કેપિટલ રિસ્ક પુલ % (Max Capital Allocation):</label>
+        <input type="range" id="capital-pct-slider" min="5" max="50" step="5" value="25" onchange="updateCapitalPct(this.value)" oninput="document.getElementById('capital-pct-val').textContent = this.value + '%'" />
+        <span id="capital-pct-val" class="slider-value">25%</span>
       </div>
     </div>
   </section>
 
   <!-- Main Grid -->
   
+  <!-- 5-Category Index & F&O Market Watch Explorer (As per user screenshots) -->
+  <section class="index-explorer-panel">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+      <div>
+        <h2 style="font-size: 1.02rem; font-weight: 800; color: #0F172A; margin: 0; display: flex; align-items: center; gap: 8px;">
+          🌐 ભારતીય માર્કેટ વૉચ & ઇન્ડેક્સ એક્સપ્લોરર (5 Categories & F&O)
+        </h2>
+        <p style="font-size: 0.74rem; color: #64748B; margin: 3px 0 0 0;">
+          સ્ક્રીનશોટ મુજબ તમામ 5 કેટેગરી અને F&O ઓપ્શન્સ — કોઈપણ કાર્ડ પર ક્લિક કરી સીધો લાઈવ ચાર્ટ ખોલો
+        </p>
+      </div>
+      <span id="indices-count-badge" class="badge badge-paper" style="font-size: 0.74rem; font-weight: 700;">
+        65+ ઇન્ડેક્સ & F&O ઉપલબ્ધ
+      </span>
+    </div>
+
+    <!-- Category Tabs Navigation -->
+    <div class="index-cat-tabs">
+      <button id="cat-tab-key_indices" class="cat-tab-btn active" onclick="switchIndexCategory('key_indices')">
+        ⭐ મુખ્ય સૂચકાંકો (7)
+      </button>
+      <button id="cat-tab-sectoral" class="cat-tab-btn" onclick="switchIndexCategory('sectoral')">
+        🏭 સેક્ટોરલ ઇન્ડેક્સ (12)
+      </button>
+      <button id="cat-tab-market_cap" class="cat-tab-btn" onclick="switchIndexCategory('market_cap')">
+        🏢 માર્કેટ કેપ આધારિત (6)
+      </button>
+      <button id="cat-tab-nse_indices" class="cat-tab-btn" onclick="switchIndexCategory('nse_indices')">
+        📈 NSE ઇન્ડેક્સ (24)
+      </button>
+      <button id="cat-tab-bse_indices" class="cat-tab-btn" onclick="switchIndexCategory('bse_indices')">
+        🏛️ BSE ઇન્ડેક્સ (16)
+      </button>
+      <button id="cat-tab-fno_options" class="cat-tab-btn" onclick="switchIndexCategory('fno_options')">
+        ⚡ F&O ઓપ્શન્સ (CE/PE)
+      </button>
+    </div>
+
+    <!-- Category Items Cards Grid -->
+    <div id="index-category-grid" class="index-grid">
+      <div style="grid-column: 1 / -1; text-align: center; padding: 20px; color: #64748B; font-size: 0.85rem;">
+        ⏳ ઇન્ડેક્સ ડેટા લોડ થઈ રહ્યો છે...
+      </div>
+    </div>
+  </section>
+
   <!-- Live Interactive Chart Section -->
     <!-- 100% Native High-Performance Indian Candlestick Chart -->
   <section class="panel chart-panel" style="margin-bottom: 20px; padding: 16px; background: #FFFFFF;">
@@ -264,18 +315,20 @@
           <div class="panel-title">
             ⚡ સક્રિય સોદા (Live Active Trades) <span id="active-trades-badge" class="badge-count">0</span>
           </div>
-          <span style="font-size:0.72rem; color:#10B981;">Intraday (3:15 PM Exit) & 2-7 Day Short Swing</span>
+          <span style="font-size:0.72rem; color:#10B981; font-weight:700;">⚡ Intraday MIS (3:15 PM Auto Square-off) • 25% સેફ પુલ</span>
         </div>
         <div class="table-wrapper">
           <table>
             <thead>
               <tr>
                 <th>સિમ્બોલ / એકાઉન્ટ</th>
-                <th>પ્રકાર</th>
+                <th>ડાયરેક્શન</th>
                 <th>જથ્થો (Qty)</th>
-                <th>ખરીદ ભાવ</th>
-                <th>હાલનો ભાવ</th>
-                <th>લાઇવ નફો/નુકસાન</th>
+                <th>ખરીદ ભાવ (Entry)</th>
+                <th>હાલનો ભાવ (LTP)</th>
+                <th>પોઇન્ટ્સ (+/-)</th>
+                <th>રોકાયેલી મૂડી (Margin)</th>
+                <th>લાઇવ P&L</th>
                 <th>ટાર્ગેટ / SL</th>
                 <th>એક્શન</th>
               </tr>
@@ -615,54 +668,6 @@
         </div>
       </form>
     </div>
-  </div>
-
-  <!-- Mobile Anywhere Connect Modal -->
-  <div id="mobile-connect-modal" class="modal-overlay" style="display: none;">
-    <div class="modal" style="max-width: 440px; text-align: center;">
-      <div class="modal-header" style="justify-content: space-between;">
-        <h3 style="display: flex; align-items: center; gap: 8px; font-size: 1.05rem; color: #0F172A;">
-          📱 મોબાઈલ કનેક્ટ (ગમે ત્યાંથી ચલાવો)
-        </h3>
-        <button onclick="closeMobileConnectModal()" style="background:none; border:none; color:#475569; font-size:1.4rem; cursor:pointer; font-weight:bold;">&times;</button>
-      </div>
-      
-      <div style="padding: 6px 0;">
-        <p style="font-size: 0.83rem; color: #475569; line-height: 1.4; margin-bottom: 12px;">
-          તમે ઘરે હોવ કે બહાર, કોઈપણ સિમકાર્ડ (4G/5G) કે Wi-Fi પરથી તમારા મોબાઈલમાં આ સાઈટ સીધી ખોલી શકો છો.
-        </p>
-
-        <!-- QR Code Display -->
-        <div style="margin: 10px auto; width: 180px; height: 180px; padding: 6px; background: #FFFFFF; border: 2px solid #E2E8F0; border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
-          <img id="mobile-qr-img" src="" alt="Scan QR with Phone" style="width: 164px; height: 164px; border-radius: 6px; display: block;" />
-        </div>
-        <p style="font-size: 0.74rem; color: #64748B; margin-top: 2px; font-weight: 600;">
-          📷 મોબાઈલ કેમેરાથી આ QR કોડ સ્કેન કરો
-        </p>
-
-        <!-- Link Display Box -->
-        <div style="background: #F8FAFC; border: 1.5px solid #CBD5E1; border-radius: 8px; padding: 8px 10px; margin-top: 12px; text-align: left;">
-          <div style="font-size: 0.72rem; color: #64748B; font-weight: 700; margin-bottom: 4px;">🌍 Worldwide Mobile HTTPS Link:</div>
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <input type="text" id="mobile-link-input" readonly value="લિંક તૈયાર થઈ રહી છે..." style="flex: 1; padding: 6px 8px; font-size: 0.78rem; font-weight: 600; background: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 6px; color: #0F172A;" />
-            <button id="btn-copy-mobile-link" class="btn btn-primary" onclick="copyMobileLink()" style="padding: 6px 10px; font-size: 0.75rem; font-weight: 700;">
-              📋 કોપી
-            </button>
-          </div>
-        </div>
-
-        <div style="background: #F0FDF4; border: 1px solid #86EFAC; border-radius: 8px; padding: 8px 10px; margin-top: 10px; text-align: left;">
-          <div style="font-size: 0.76rem; color: #166534; font-weight: 700;">
-            🛡️ ૧૦૦% પ્રાઈવેટ & પાસવર્ડ પ્રોટેક્ટેડ:
-          </div>
-          <div style="font-size: 0.72rem; color: #15803D; margin-top: 2px; line-height: 1.3;">
-            આ લિંક ફક્ત તમારા User ID (<strong>Raxit@5001</strong>) થી જ ખુલશે. અન્ય કોઈ વ્યક્તિ ખોલી શકતી નથી.
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <script src="/static/app.js?v=20260907_26"></script>
+  <script src="/static/app.js?v=20260908_02"></script>
 </body>
 </html>

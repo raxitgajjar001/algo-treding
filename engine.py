@@ -89,7 +89,6 @@ class TradingEngine:
     def evaluate_active_trades(self):
         remaining_trades = []
         for trade in self.active_trades:
-            # Find current price
             symbol = trade["symbol"]
             current_price = trade["entry_price"]
             for opp in self.scanner.cached_opportunities:
@@ -97,12 +96,25 @@ class TradingEngine:
                     current_price = opp["current_price"]
                     break
 
-            # Calculate live unrealized P&L
-            qty = trade["qty"]
-            unrealized_pnl = round((current_price - trade["entry_price"]) * qty, 2)
+            qty = int(trade["qty"])
+            is_long = trade.get("direction", "BUY").upper() in ["BUY", "BUY_CALL", "LONG"]
+
+            # Two-Way P&L calculation
+            if is_long:
+                unrealized_pnl = round((current_price - trade["entry_price"]) * qty, 2)
+                pnl_pct = round(((current_price - trade["entry_price"]) / trade["entry_price"]) * 100.0, 2)
+                points_diff = round(current_price - trade["entry_price"], 2)
+            else:
+                # SHORT / SELL: profit when price drops
+                unrealized_pnl = round((trade["entry_price"] - current_price) * qty, 2)
+                pnl_pct = round(((trade["entry_price"] - current_price) / trade["entry_price"]) * 100.0, 2)
+                points_diff = round(trade["entry_price"] - current_price, 2)
+
             trade["current_price"] = current_price
             trade["unrealized_pnl"] = unrealized_pnl
-            trade["pnl_pct"] = round(((current_price - trade["entry_price"]) / trade["entry_price"]) * 100.0, 2)
+            trade["pnl_pct"] = pnl_pct
+            trade["points_diff"] = points_diff
+            trade["invested_capital"] = round(trade["entry_price"] * qty, 2)
 
             should_exit, reason = self.risk_manager.should_exit_trade(trade, current_price)
             if should_exit:
@@ -130,7 +142,10 @@ class TradingEngine:
             return
 
         opportunities = self.scanner.scan_opportunities()
-        high_score_opps = [o for o in opportunities if o["score"] >= 80]
+        settings = get_settings()
+        min_score = settings.get("min_confidence_score", 85)
+        # Strict high-accuracy filter: only trade on confirmed signals
+        high_score_opps = [o for o in opportunities if o["score"] >= min_score and "SIGNAL_CONFIRMED" in o.get("status", "")]
         if not high_score_opps:
             return
 
@@ -158,15 +173,15 @@ class TradingEngine:
                 self.log(f"Skipped {symbol} for {acc['name']}: {reason}", "INFO")
                 continue
 
-            # Calculate position size strictly per user-defined % of capital
+            # Calculate position size strictly within remaining 25% pool
             qty, allocated_funds = self.risk_manager.calculate_position_size(
                 account=acc,
-                entry_price=best_opp["current_price"]
+                entry_price=best_opp["current_price"],
+                open_trades=self.active_trades
             )
             if qty <= 0:
                 continue
 
-            settings = get_settings()
             global_mode = settings.get("mode", "PAPER")
             has_token = bool(acc.get("access_token", "").strip())
             is_live_order = (global_mode == "LIVE") and has_token
@@ -177,9 +192,12 @@ class TradingEngine:
                 is_paper=not is_live_order
             )
 
-            product = best_opp["product"]
+            product = "INTRADAY"
+            direction = best_opp.get("direction", "BUY").upper()
+            txn_type = "BUY" if direction in ["BUY", "BUY_CALL", "LONG"] else "SELL"
+
             order_res = client.place_order(
-                txn_type="BUY",
+                txn_type=txn_type,
                 symbol=symbol,
                 security_id=best_opp["security_id"],
                 qty=qty,
@@ -197,11 +215,15 @@ class TradingEngine:
                     "account_name": acc["name"],
                     "symbol": symbol,
                     "security_id": best_opp["security_id"],
-                    "trade_type": best_opp["trade_type"],
-                    "product": product,
+                    "trade_type": "INTRADAY",
+                    "product": "INTRADAY",
+                    "direction": direction,
+                    "direction_label": best_opp.get("direction_label", "🟢 BUY"),
                     "qty": qty,
                     "entry_price": best_opp["current_price"],
                     "current_price": best_opp["current_price"],
+                    "points_diff": 0.0,
+                    "invested_capital": allocated_funds,
                     "target_price": best_opp["target_price"],
                     "target_pct": best_opp["target_pct"],
                     "stoploss_price": best_opp["stoploss_price"],
@@ -215,18 +237,27 @@ class TradingEngine:
                     "pnl_pct": 0.0
                 }
                 self.active_trades.append(new_trade)
+                dir_txt = "BUY LONG" if direction in ["BUY", "BUY_CALL", "LONG"] else "SHORT SELL"
                 self.log(
-                    f"AUTO-BUY: {symbol} x {qty} @ ₹{best_opp['current_price']} for {acc['name']} ({best_opp['trade_type']})",
+                    f"AUTO-{dir_txt}: {symbol} x {qty} @ ₹{best_opp['current_price']} for {acc['name']} (Capital: ₹{allocated_funds:,.2f})",
                     "SUCCESS"
                 )
         self.save_trades()
 
     def close_trade(self, trade: Dict, exit_price: float, reason: str):
-        qty = trade["qty"]
-        pnl = round((exit_price - trade["entry_price"]) * qty, 2)
-        pnl_pct = round(((exit_price - trade["entry_price"]) / trade["entry_price"]) * 100.0, 2)
+        qty = int(trade["qty"])
+        is_long = trade.get("direction", "BUY").upper() in ["BUY", "BUY_CALL", "LONG"]
 
-        # Place sell order via INDstocks client
+        if is_long:
+            pnl = round((exit_price - trade["entry_price"]) * qty, 2)
+            pnl_pct = round(((exit_price - trade["entry_price"]) / trade["entry_price"]) * 100.0, 2)
+            close_txn_type = "SELL"
+        else:
+            pnl = round((trade["entry_price"] - exit_price) * qty, 2)
+            pnl_pct = round(((trade["entry_price"] - exit_price) / trade["entry_price"]) * 100.0, 2)
+            close_txn_type = "BUY"
+
+        # Place close order via INDstocks client
         acc_token = ""
         trade_mode = trade.get("mode", "PAPER")
         if trade_mode == "LIVE":
@@ -238,12 +269,12 @@ class TradingEngine:
         is_paper = (trade_mode != "LIVE") or (not acc_token)
         client = INDstocksClient(access_token=acc_token, is_paper=is_paper)
         client.place_order(
-            txn_type="SELL",
+            txn_type=close_txn_type,
             symbol=trade["symbol"],
             security_id=trade["security_id"],
             qty=qty,
             order_type="MARKET",
-            product=trade["product"]
+            product="INTRADAY"
         )
 
         completed_trade = trade.copy()
@@ -265,8 +296,9 @@ class TradingEngine:
         self.daily_realized_pnl += pnl
 
         log_level = "SUCCESS" if pnl >= 0 else "WARNING"
+        action_verb = "EXIT"
         self.log(
-            f"AUTO-SELL: {trade['symbol']} exited @ ₹{exit_price} | P&L: ₹{pnl} ({pnl_pct}%) | Reason: {reason}",
+            f"AUTO-{action_verb}: {trade['symbol']} closed @ ₹{exit_price} | P&L: ₹{pnl} ({pnl_pct}%) | Reason: {reason}",
             log_level
         )
         self.save_trades()
@@ -284,6 +316,16 @@ class TradingEngine:
         self.log("EMERGENCY KILL SWITCH ACTIVATED! All open positions squared off immediately.", "DANGER")
 
     def get_dashboard_summary(self) -> Dict:
+        active_accounts = get_active_accounts()
+        total_capital = sum(float(a.get("total_capital", 100000.0)) for a in active_accounts) if active_accounts else 100000.0
+        used_capital = round(sum(float(t.get("entry_price", 0.0)) * int(t.get("qty", 1)) for t in self.active_trades), 2)
+        available_capital = round(max(0.0, total_capital - used_capital), 2)
+        
+        settings = get_settings()
+        alloc_pct = float(settings.get("capital_allocation_pct", 25.0))
+        max_capital_pool = round(total_capital * (alloc_pct / 100.0), 2)
+        remaining_pool = round(max(0.0, max_capital_pool - used_capital), 2)
+
         active_pnl = sum(t.get("unrealized_pnl", 0.0) for t in self.active_trades)
         total_pnl = round(self.daily_realized_pnl + active_pnl, 2)
 
@@ -294,6 +336,12 @@ class TradingEngine:
         return {
             "is_running": self.is_running,
             "emergency_halt": self.risk_manager.emergency_halt,
+            "total_capital": total_capital,
+            "used_capital": used_capital,
+            "available_capital": available_capital,
+            "capital_allocation_pct": alloc_pct,
+            "max_capital_pool": max_capital_pool,
+            "remaining_pool": remaining_pool,
             "active_trades_count": len(self.active_trades),
             "closed_trades_count": closed_trades,
             "daily_realized_pnl": round(self.daily_realized_pnl, 2),
