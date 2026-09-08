@@ -1283,10 +1283,10 @@ function renderIndexCategoryItems(catKey) {
     return `
       <div class="index-card ${isSelected ? 'selected' : ''}" onclick="switchChart('${item.symbol}')" title="ચાર્ટ જોવા ક્લિક કરો">
         <div class="index-card-header">
-          <div class="index-card-title">${item.display_name}</div>
+          <div class="index-card-title">${item.name || item.symbol}</div>
           <span style="font-size:0.65rem; padding:1px 5px; border-radius:4px; font-weight:700; background:#F1F5F9; color:#475569;">${item.segment || 'INDEX'}</span>
         </div>
-        <div class="index-card-subtitle">${item.symbol} • ${item.name}</div>
+        <div class="index-card-subtitle">${item.exchange || 'NSE'}: ${item.symbol}</div>
         <div class="index-card-body">
           <div class="index-card-price" id="cat-price-${item.symbol}">₹${priceFormatted}</div>
           <div class="index-card-chg ${chgClass}" id="cat-chg-${item.symbol}">${chgText}</div>
