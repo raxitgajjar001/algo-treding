@@ -144,7 +144,7 @@ async def keep_alive_worker():
         try:
             timing = get_market_timing()
             if timing["is_open"]:
-                requests.get("https://algo-treding-buhr.onrender.com/api/system/status", timeout=5)
+                requests.get("https://algo-treding-buhr.onrender.com/api/status", timeout=5)
         except Exception:
             pass
 
