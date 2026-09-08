@@ -597,8 +597,9 @@ def get_market_chart(symbol: str, interval: str = "5m"):
                     c = quotes["close"][i]
                     v = quotes.get("volume", [0]*len(timestamps))[i] or 0
                     if None not in (o, h, l, c):
-                        # Strict epoch seconds: Lightweight Charts converts to local browser IST automatically!
-                        candle_time = time.strftime("%Y-%m-%d", time.gmtime(timestamps[i])) if is_daily else int(timestamps[i])
+                        # Add IST_OFFSET (+19800s / 5h 30m) so Lightweight Charts UTC renderer displays exact Indian Time (09:15 to 15:30 IST)
+                        IST_OFFSET = 19800
+                        candle_time = time.strftime("%Y-%m-%d", time.gmtime(timestamps[i] + IST_OFFSET)) if is_daily else int(timestamps[i] + IST_OFFSET)
                         candles.append({
                             "time": candle_time,
                             "open": round(o, 2),
@@ -642,11 +643,12 @@ def get_market_chart(symbol: str, interval: str = "5m"):
                 continue
             break
     
-    # Generate high-fidelity candles using exact UTC epoch seconds
+    # Generate high-fidelity candles using exact IST epoch seconds
+    IST_OFFSET = 19800
     candles = []
     volumes = []
     p = base * 0.994
-    cur_t = int(now) - (60 * 300)
+    cur_t = int(now + IST_OFFSET) - (60 * 300)
     for i in range(60):
         t = cur_t + (i * 300)
         delta = random.uniform(-0.002, 0.0022) * base
@@ -678,42 +680,74 @@ def get_market_chart(symbol: str, interval: str = "5m"):
     CHART_CACHE[cache_key] = {"time": now, "data": result_payload}
     return result_payload
 
+REAL_LIVE_TICKS_CACHE = {"time": 0, "ticks": {}}
+
 @app.get("/api/market/live-ticks")
 def get_live_ticks():
+    now = time.time()
+    if (now - REAL_LIVE_TICKS_CACHE["time"] < 2.5) and REAL_LIVE_TICKS_CACHE["ticks"]:
+        return {"timestamp": now, "ticks": REAL_LIVE_TICKS_CACHE["ticks"]}
+
     timing = get_market_timing()
     is_open = timing["is_open"]
 
-    import random
     ticks = {}
-    from scanner import WATCHLIST, INDEX_CATEGORIES
+    from scanner import WATCHLIST, INDEX_CATEGORIES, FNO_WATCHLIST
     
-    # Active watchlist ticks
-    for item in WATCHLIST:
-        sym = item["symbol"]
-        cached = CHART_CACHE.get(sym)
-        base = cached["data"]["current_price"] if cached else item["base_price"]
-        tick_delta = (random.random() - 0.49) * (base * 0.0006) if is_open else 0.0
-        ltp = round(base + tick_delta, 2)
-        ticks[sym] = {
-            "ltp": ltp,
-            "change_pct": round(((ltp - item["base_price"]) / item["base_price"]) * 100.0, 2),
-            "timestamp": time.time()
-        }
-    
-    # Major Index ticks
-    n_jit = (random.random() - 0.49)*8.0 if is_open else 0.0
-    b_jit = (random.random() - 0.49)*15.0 if is_open else 0.0
-    s_jit = (random.random() - 0.49)*20.0 if is_open else 0.0
-    f_jit = (random.random() - 0.49)*6.0 if is_open else 0.0
-    v_jit = (random.random() - 0.49)*0.2 if is_open else 0.0
+    # 1. Fetch real market indices & stocks from Yahoo Finance
+    symbols_map = {
+        "NIFTY": "^NSEI",
+        "BANKNIFTY": "^NSEBANK",
+        "SENSEX": "^BSESN",
+        "FINNIFTY": "NIFTY_FIN_SERVICE.NS",
+        "INDIAVIX": "^INDIAVIX",
+        "RELIANCE": "RELIANCE.NS",
+        "HDFCBANK": "HDFCBANK.NS",
+        "ICICIBANK": "ICICIBANK.NS",
+        "SBIN": "SBIN.NS",
+        "TCS": "TCS.NS",
+        "INFY": "INFY.NS"
+    }
 
-    ticks["NIFTY"] = {"ltp": round(23693.55 + n_jit, 2), "change_pct": -0.36}
-    ticks["BANKNIFTY"] = {"ltp": round(56951.90 + b_jit, 2), "change_pct": -0.24}
-    ticks["SENSEX"] = {"ltp": round(75802.23 + s_jit, 2), "change_pct": -0.43}
-    ticks["FINNIFTY"] = {"ltp": round(25210.00 + f_jit, 2), "change_pct": -0.35}
-    ticks["INDIAVIX"] = {"ltp": round(11.15 + v_jit, 2), "change_pct": -0.09}
-    
-    return {"timestamp": time.time(), "ticks": ticks}
+    headers = {"User-Agent": "Mozilla/5.0"}
+    for name, yf_sym in symbols_map.items():
+        try:
+            url = f"https://query1.finance.yahoo.com/v8/finance/chart/{yf_sym}?interval=1d&range=1d"
+            r = requests.get(url, headers=headers, timeout=1.0)
+            if r.status_code == 200:
+                meta = r.json()["chart"]["result"][0]["meta"]
+                ltp = float(meta.get("regularMarketPrice", 0))
+                prev = float(meta.get("chartPreviousClose", meta.get("previousClose", ltp)))
+                chg = round(((ltp - prev) / prev) * 100.0, 2) if prev > 0 else 0.0
+                ticks[name] = {"ltp": round(ltp, 2), "change_pct": chg}
+        except Exception:
+            pass
+
+    # 2. Fill in base prices for all other categories if missing
+    for cat in INDEX_CATEGORIES.values():
+        for item in cat:
+            s = item["symbol"]
+            if s not in ticks:
+                ticks[s] = {"ltp": float(item["base_price"]), "change_pct": float(item.get("change_pct", 0.0))}
+
+    # 3. Dynamic F&O Option contracts pricing relative to real NIFTY spot
+    nifty_spot = ticks.get("NIFTY", {}).get("ltp", 23665.7)
+    for opt in FNO_WATCHLIST:
+        sym = opt["symbol"]
+        strike = float(opt["strike"])
+        is_ce = opt["option_type"] == "CE"
+        if opt["underlying"] == "NIFTY":
+            diff = (nifty_spot - strike) if is_ce else (strike - nifty_spot)
+            time_val = 110.0
+            opt_ltp = round(max(35.0, (diff * 0.55) + time_val), 2)
+            ticks[sym] = {"ltp": opt_ltp, "change_pct": round(opt.get("change_pct", 1.2), 2)}
+        else:
+            base = float(opt["base_price"])
+            ticks[sym] = {"ltp": base, "change_pct": 0.5}
+
+    REAL_LIVE_TICKS_CACHE["time"] = now
+    REAL_LIVE_TICKS_CACHE["ticks"] = ticks
+    return {"timestamp": now, "ticks": ticks}
 
 
 

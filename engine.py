@@ -21,8 +21,11 @@ class TradingEngine:
         self.load_trades()
 
     def log(self, message: str, level: str = "INFO"):
+        import datetime
+        utc_now = datetime.datetime.now(datetime.timezone.utc)
+        ist_now = utc_now + datetime.timedelta(hours=5, minutes=30)
         entry = {
-            "timestamp": time.strftime("%H:%M:%S"),
+            "timestamp": ist_now.strftime("%I:%M:%S %p"),
             "level": level,
             "message": message
         }

@@ -562,17 +562,17 @@ async function fetchLiveTicks() {
     const currentTick = ticks[currentChartSymbol];
     if (currentTick && currentCandle && allCandles.length > 0) {
       const newClose = currentTick.ltp;
-      const newHigh = Math.max(currentCandle.high, newClose);
-      const newLow = Math.min(currentCandle.low, newClose);
+      // Guard against wild multi-percent jumps to prevent chart bar spikes
+      if (Math.abs(newClose - currentCandle.close) / currentCandle.close < 0.012) {
+        currentCandle.close = newClose;
+        currentCandle.high = Math.max(currentCandle.high, newClose);
+        currentCandle.low = Math.min(currentCandle.low, newClose);
 
-      currentCandle.close = newClose;
-      currentCandle.high = newHigh;
-      currentCandle.low = newLow;
-
-      if (indicatorsState.chartType === 'candles' && candleSeries) {
-        candleSeries.update(currentCandle);
-      } else if (indicatorsState.chartType === 'line' && areaSeries) {
-        areaSeries.update({ time: currentCandle.time, value: newClose });
+        if (indicatorsState.chartType === 'candles' && candleSeries) {
+          candleSeries.update(currentCandle);
+        } else if (indicatorsState.chartType === 'line' && areaSeries) {
+          areaSeries.update({ time: currentCandle.time, value: newClose });
+        }
       }
 
       const ltpElem = document.getElementById('current-chart-ltp');
