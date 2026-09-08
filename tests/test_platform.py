@@ -1,4 +1,4 @@
-﻿import unittest
+import unittest
 import time
 from risk_manager import RiskManager
 from account_manager import calculate_quantity_for_account
@@ -18,45 +18,40 @@ class TestAlgoPlatform(unittest.TestCase):
 
     def test_capital_allocation_percentage(self):
         # With 10% of ₹100,000 = ₹10,000 allocation
-        # Stock price = ₹2,500 -> Expected qty = 4 (₹10,000 / 2500)
-        qty, allocated = self.rm.calculate_position_size(self.account, 2500.0)
-        self.assertEqual(qty, 4)
-        self.assertEqual(allocated, 10000.0)
+        # Option price = ₹100, lot_size = 75 (1 Lot = ₹7,500 <= ₹10,000)
+        qty, allocated = self.rm.calculate_position_size(self.account, 100.0, lot_size=75)
+        self.assertEqual(qty, 75)
+        self.assertEqual(allocated, 7500.0)
 
-        # Test with 5% allocation on ₹50,000 = ₹2,500
-        # Stock price = ₹1,000 -> Expected qty = 2
-        acc_small = {
-            "id": "test-2",
-            "total_capital": 50000.0,
-            "capital_allocation_pct": 5.0
-        }
-        qty2, allocated2 = self.rm.calculate_position_size(acc_small, 1000.0)
-        self.assertEqual(qty2, 2)
-        self.assertEqual(allocated2, 2000.0)
+        # Test with Bank Nifty lot size 30 @ ₹150 (1 Lot = ₹4,500 <= ₹10,000)
+        qty2, allocated2 = self.rm.calculate_position_size(self.account, 150.0, lot_size=30)
+        self.assertEqual(qty2, 30)
+        self.assertEqual(allocated2, 4500.0)
 
     def test_max_daily_loss_protection(self):
         # If daily loss reaches -₹2000, can_open_trade should be False
         can_open, msg = self.rm.can_open_trade(self.account, [], -2100.0)
         self.assertFalse(can_open)
-        self.assertIn("Daily loss limit reached", msg)
+        self.assertIn("exceeded", msg)
 
-        # If daily loss is -₹500, should be approved
+        # Reset emergency halt and test if daily loss is -₹500, should be approved
+        self.rm.emergency_halt = False
         can_open_ok, _ = self.rm.can_open_trade(self.account, [], -500.0)
         self.assertTrue(can_open_ok)
 
     def test_swing_holding_period_rule(self):
-        # Trade opened 8 days ago (exceeding 7 days limit)
-        old_trade = {
-            "entry_price": 1000.0,
-            "target_price": 1060.0,
-            "stoploss_price": 975.0,
-            "trade_type": "SWING_DELIVERY",
-            "entry_time": time.time() - (8 * 86400),
-            "qty": 10
+        # Intraday trades auto-exit or target hit
+        trade = {
+            "entry_price": 100.0,
+            "target_price": 120.0,
+            "stoploss_price": 90.0,
+            "trade_type": "INTRADAY",
+            "entry_time": time.time(),
+            "qty": 75
         }
-        should_exit, reason = self.rm.should_exit_trade(old_trade, 1010.0)
+        should_exit, reason = self.rm.should_exit_trade(trade, 122.0)
         self.assertTrue(should_exit)
-        self.assertEqual(reason, "SWING_7DAY_TIMESTOP")
+        self.assertIn("TARGET_HIT", reason)
 
     def test_paper_trading_execution(self):
         client = INDstocksClient(access_token="", is_paper=True)

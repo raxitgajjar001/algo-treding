@@ -42,7 +42,7 @@ class TradingEngine:
                     # Filter out old equity trades so platform focuses strictly on F&O derivatives
                     self.active_trades = [
                         t for t in raw_active 
-                        if t.get("segment") == "DERIVATIVE" or ("_CE" in t.get("symbol", "")) or ("_PE" in t.get("symbol", ""))
+                        if t.get("segment") == "DERIVATIVE" or ("_CE" in t.get("symbol", "")) or ("_PE" in t.get("symbol", "")) or t.get("symbol", "").endswith("CE") or t.get("symbol", "").endswith("PE")
                     ]
                     self.trade_history = data.get("history", [])
                     self.daily_realized_pnl = round(sum(t.get("pnl", 0.0) for t in self.trade_history), 2)

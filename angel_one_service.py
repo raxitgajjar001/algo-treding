@@ -327,7 +327,7 @@ class AngelOneService:
         
         lot_sizes = {
             "NIFTY": 75,
-            "BANKNIFTY": 15,
+            "BANKNIFTY": 30,
             "FINNIFTY": 25,
             "SENSEX": 10,
             "MIDCPNIFTY": 50
@@ -346,13 +346,15 @@ class AngelOneService:
         base_tv = 115.0 if und == "NIFTY" else (230.0 if und == "BANKNIFTY" else 95.0)
         est_premium = round(max(35.0, base_tv + (diff * 0.45)), 1)
         
-        tradingsymbol = f"{und} {atm_strike} {opt}"
+        tradingsymbol = f"{und}24SEP{atm_strike}{opt}"
+        contract_name = f"{und} 24 SEP {atm_strike} {opt}"
         
         return {
             "underlying": und,
             "strike": atm_strike,
             "option_type": opt,
             "tradingsymbol": tradingsymbol,
+            "contract_name": contract_name,
             "lot_size": lot_size,
             "estimated_premium": est_premium
         }

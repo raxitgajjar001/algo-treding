@@ -389,7 +389,11 @@ def list_accounts():
     for acc in accounts:
         c = acc.copy()
         tok = c.get('access_token', '')
-        c['access_token_masked'] = (tok[:4] + '****' + tok[-4:]) if len(tok) >= 8 else ('****' if tok else 'NOT SET')
+        is_paper = c.get('broker') == 'PAPER' or 'paper' in c.get('name', '').lower() or c.get('is_paper', False)
+        if is_paper:
+            c['access_token_masked'] = '🛡️ વર્ચ્યુઅલ ડેમો (ટોકનની જરૂર નથી)'
+        else:
+            c['access_token_masked'] = (tok[:4] + '****' + tok[-4:]) if len(tok) >= 8 else ('****' if tok else 'NOT SET')
         c.pop('access_token', None)
         safe_accounts.append(c)
     return safe_accounts

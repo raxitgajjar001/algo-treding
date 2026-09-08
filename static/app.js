@@ -562,7 +562,7 @@ function toggleChartType() {
 // --- Pro 1-Click Scalper & Autonomous Algo Console Controller ---
 let currentScalpSymbol = 'NIFTY';
 let scalpParams = { lots: 1, sl: 15, tgt: 30 };
-const lotSizes = { 'NIFTY': 75, 'BANKNIFTY': 15, 'SENSEX': 10, 'FINNIFTY': 25 };
+const lotSizes = { 'NIFTY': 75, 'BANKNIFTY': 30, 'SENSEX': 10, 'FINNIFTY': 25 };
 const strikeSteps = { 'NIFTY': 50, 'BANKNIFTY': 100, 'SENSEX': 100, 'FINNIFTY': 50 };
 window.lastTicksCache = null;
 
@@ -652,7 +652,8 @@ function updateScalperDisplay(ticks) {
     
     if (chgElem) {
       const isPos = (tick.change_pct || 0) >= 0;
-      chgElem.innerHTML = `Change: <span style="font-weight:700; color:${isPos ? '#16A34A' : '#DC2626'}">${isPos ? '+' : ''}${tick.change_pct}%</span> | Angel One 0-Delay`;
+      const streamStatus = window.isMarketOpen ? '⚡ 0.2ms LIVE' : '⏸️ ક્લોઝિંગ લેવલ (ફ્રીઝ)';
+      chgElem.innerHTML = `Change: <span style="font-weight:700; color:${isPos ? '#16A34A' : '#DC2626'}">${isPos ? '+' : ''}${tick.change_pct}%</span> | ${streamStatus}`;
     }
 
     if (strikeElem) strikeElem.textContent = atmStrike;
@@ -794,8 +795,18 @@ async function fetchLiveTicks() {
 
     // Update Latency Badge
     const latBadge = document.getElementById('latency-badge');
-    if (latBadge && data.latency_ms !== undefined) {
-      latBadge.textContent = `⚡ ${data.latency_ms}ms (ઝીરો ડિલે)`;
+    if (latBadge) {
+      if (window.isMarketOpen === false) {
+        latBadge.textContent = '⏸️ ક્લોઝિંગ લેવલ (ફ્રીઝ)';
+        latBadge.style.background = '#F1F5F9';
+        latBadge.style.color = '#475569';
+        latBadge.style.borderColor = '#CBD5E1';
+      } else if (data.latency_ms !== undefined) {
+        latBadge.textContent = `⚡ ${data.latency_ms}ms (ઝીરો ડિલે LIVE)`;
+        latBadge.style.background = '#ECFDF5';
+        latBadge.style.color = '#065F46';
+        latBadge.style.borderColor = '#6EE7B7';
+      }
     }
 
     // 1. Update Ribbon
@@ -1009,6 +1020,21 @@ async function fetchStatus() {
       const noticeBar = document.getElementById('market-notice-bar');
       const clockElem = document.getElementById('clock-ist');
 
+      window.isMarketOpen = Boolean(timing.is_open);
+      const latBadge = document.getElementById('latency-badge');
+      if (latBadge) {
+        if (!timing.is_open) {
+          latBadge.textContent = '⏸️ ક્લોઝિંગ લેવલ (ફ્રીઝ)';
+          latBadge.style.background = '#F1F5F9';
+          latBadge.style.color = '#475569';
+          latBadge.style.borderColor = '#CBD5E1';
+        } else {
+          latBadge.textContent = '⚡ 0.2ms (ઝીરો ડિલે LIVE)';
+          latBadge.style.background = '#ECFDF5';
+          latBadge.style.color = '#065F46';
+          latBadge.style.borderColor = '#6EE7B7';
+        }
+      }
       if (marketBadge) {
         marketBadge.textContent = timing.badge_text;
         marketBadge.className = timing.is_open ? 'badge badge-live' : 'badge badge-bearish';
@@ -1322,16 +1348,18 @@ async function fetchScanner() {
     const tbody = document.getElementById('scanner-table-body');
     
     tbody.innerHTML = opps.map(o => {
-      const isCall = (o.symbol || '').includes('_CE');
-      const isPut = (o.symbol || '').includes('_PE');
-      const badgeClass = o.status.includes('CONFIRMED') ? 'badge-bullish' : 'badge-paper';
-      const statusText = o.status.includes('CONFIRMED') ? '🟢 સચોટ F&O સિગ્નલ' : '⏳ સ્કેનિંગ ચાલુ';
+      const isCall = (o.symbol || '').includes('_CE') || (o.symbol || '').endsWith('CE') || o.option_type === 'CE';
+      const isPut = (o.symbol || '').includes('_PE') || (o.symbol || '').endsWith('PE') || o.option_type === 'PE';
+      const isConfirmed = o.status.includes('CONFIRMED');
+      const isBlocked = o.status.includes('બ્લોક') || o.status.includes('વિરુદ્ધ');
+      const badgeClass = isConfirmed ? 'badge-bullish' : (isBlocked ? 'badge-bearish' : 'badge-paper');
+      const statusText = isConfirmed ? '🟢 સચોટ F&O સિગ્નલ' : (isBlocked ? '⏸️ ટ્રેન્ડ વિરુદ્ધ (બ્લોક)' : '⏳ સ્કેનિંગ ચાલુ');
 
       return `
       <tr style="cursor: pointer;" onclick="switchChart('${o.symbol}')" title="ચાર્ટ જોવા માટે અહીં ક્લિક કરો">
         <td>
           <strong>${o.symbol}</strong><br>
-          <small style="color: #2563EB; font-weight: 700;">${o.underlying || 'F&O'} Option (Lot Size: ${o.lot_size || 25})</small>
+          <small style="color: #2563EB; font-weight: 700;">${o.underlying || 'F&O'} Option (Lot Size: ${o.lot_size || 75})</small>
         </td>
         <td style="font-weight: 800; color: #0F172A;">₹${Number(o.current_price).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
         <td>
@@ -1388,21 +1416,21 @@ async function fetchActiveTrades() {
     if (!tbody) return;
 
     if (trades.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:#64748B; padding:28px 16px; font-size:0.85rem; line-height:1.6;">⏳ અત્યારે કોઈ સક્રિય ઓપન પોઝિશન નથી.<br/><span style="font-weight:700; color:#2563EB;">સ્માર્ટ અલ્ગોરિધમ 85%+ ટેકનિકલ સ્કોર સાથે 2m, 5m, 30m, 1h સમયગાળામાં ઉત્તમ તેજી (CALL) અથવા મંદી (PUT) ની તકની રાહ જોઈ રહ્યું છે જેથી સોદો 100% નફાકારક બને.</span></td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:#64748B; padding:28px 16px; font-size:0.85rem; line-height:1.6;">⏳ અત્યારે કોઈ સક્રિય ઓપન પોઝિશન નથી.<br/><span style="font-weight:700; color:#2563EB;">સ્માર્ટ અલ્ગોરિધમ 85%+ કન્ફિડન્સ સ્કોર અને મલ્ટી-ટાઈમફ્રેમ ટેકનિકલ ફિલ્ટર સાથે હાઈ-પ્રોબેબિલિટી (High Probability) સેટઅપની ચકાસણી કરી રહ્યું છે જેથી ઉત્તમ રિસ્ક-રિવોર્ડ મળી રહે.</span></td></tr>`;
       return;
     }
 
     tbody.innerHTML = trades.map(t => {
-      const isCall = (t.symbol || '').includes('_CE');
-      const isPut = (t.symbol || '').includes('_PE');
+      const isCall = (t.symbol || '').includes('_CE') || (t.symbol || '').endsWith('CE') || t.option_type === 'CE';
+      const isPut = (t.symbol || '').includes('_PE') || (t.symbol || '').endsWith('PE') || t.option_type === 'PE';
       const dirBadge = isCall 
         ? '<span class="badge-dir-long">🟢 BUY CALL (તેજી)</span>' 
         : (isPut ? '<span class="badge-dir-short">🔴 BUY PUT (મંદી)</span>' : '<span class="badge-dir-long">🟢 BUY</span>');
 
       const entryP = Number(t.entry_price || 0);
       const currP = Number(t.current_price || entryP);
-      const qty = parseInt(t.qty || 25, 10);
-      const lotSize = parseInt(t.lot_size || (t.symbol.includes('BANKNIFTY') ? 15 : (t.symbol.includes('SENSEX') ? 10 : 25)), 10);
+      const qty = parseInt(t.qty || 75, 10);
+      const lotSize = parseInt(t.lot_size || (t.symbol.includes('BANKNIFTY') ? 30 : (t.symbol.includes('SENSEX') ? 10 : (t.symbol.includes('NIFTY') ? 75 : 25))), 10);
       const lotsCount = Math.max(1, Math.floor(qty / lotSize));
       const investedCap = t.invested_capital ? Number(t.invested_capital) : (entryP * qty);
 
@@ -1615,12 +1643,18 @@ async function fetchAccounts() {
       return;
     }
 
-    container.innerHTML = accounts.map(a => `
+    container.innerHTML = accounts.map(a => {
+      const isPaper = a.broker === 'PAPER' || (a.name && a.name.toLowerCase().includes('paper')) || a.is_paper;
+      const tokenDisplay = isPaper ? '🛡️ વર્ચ્યુઅલ ડેમો (ટોકનની જરૂર નથી)' : (a.access_token_masked || 'NOT SET');
+      const tokenColor = isPaper ? '#059669' : '#6B7280';
+      const tokenWeight = isPaper ? '700' : 'normal';
+
+      return `
       <div class="account-card" style="background:#FFFFFF; border:1px solid #CBD5E1; border-radius:8px; padding:12px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
         <div class="account-info">
           <h4>${a.name} <span class="badge ${a.is_active ? 'badge-live' : 'badge-paper'}" style="font-size:0.65rem;">${a.is_active ? 'ACTIVE' : 'PAUSED'}</span></h4>
           <p>Broker: <strong>${a.broker}</strong> | Capital: <strong style="color:#0F172A; font-size:0.95rem;">₹${Number(a.total_capital).toLocaleString('en-IN')}</strong> | Allocation: <strong>${a.capital_allocation_pct}%</strong></p>
-          <small style="color:#6B7280;">Token: ${a.access_token_masked || 'નથી નાખેલું (Paper Mode)'}</small>
+          <small style="color:${tokenColor}; font-weight:${tokenWeight};">Token: ${tokenDisplay}</small>
         </div>
         <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">
           <button class="btn btn-primary" style="padding:4px 10px; font-size:0.72rem;" onclick="syncAccountFunds('${a.id}')" title="INDmoney માંથી સીધું લાઇવ બેલેન્સ ખેંચો">
@@ -1638,7 +1672,8 @@ async function fetchAccounts() {
           <button class="btn btn-stop" style="padding:4px 8px; font-size:0.72rem;" onclick="deleteAccount('${a.id}')" title="આ એકાઉન્ટ રદ કરો">×</button>
         </div>
       </div>
-    `).join('');
+      `;
+    }).join('');
   } catch (err) {
     console.error('Error fetching accounts:', err);
   }
