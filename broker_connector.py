@@ -54,19 +54,34 @@ def save_broker_config(cfg: Dict[str, Any]):
 class BrokerGateway:
     def __init__(self):
         self.config = load_broker_config()
-        self.active_broker = self.config.get("active_broker", "PAPER")
-        self.is_connected = True if self.active_broker == "PAPER" else False
+        self.active_broker = self.config.get("active_broker", "ANGEL_ONE")
         self.last_ping = time.time()
 
     def get_status(self) -> Dict[str, Any]:
+        from angel_one_service import angel_one_service
+        is_conn = False
+        client_name = ""
+        latency = 0.5
+        if self.active_broker == "ANGEL_ONE":
+            if not angel_one_service.is_authenticated and angel_one_service.config.get("client_code"):
+                angel_one_service.login()
+            is_conn = angel_one_service.is_authenticated
+            client_name = angel_one_service.auth_data.get("name", "Raxit Rajeshkumar Gajjar")
+            latency = 1.2
+        elif self.active_broker == "PAPER":
+            is_conn = True
+            latency = 0.2
+            client_name = "Virtual Paper Engine"
+
         return {
             "active_broker": self.active_broker,
-            "is_connected": self.is_connected,
-            "latency_ms": 0.5 if self.active_broker == "PAPER" else 15.0,
-            "mode_name": "Zero-Delay Simulation (Groww/INDmoney Ready)" if self.active_broker == "PAPER" else f"{self.active_broker} Live WebSocket",
+            "is_connected": is_conn,
+            "client_name": client_name,
+            "latency_ms": latency,
+            "mode_name": f"{client_name} (Angel One Official Feed)" if self.active_broker == "ANGEL_ONE" else "Zero-Delay Simulation (Groww/INDmoney Ready)",
             "supported_brokers": [
+                {"id": "ANGEL_ONE", "name": "Angel One SmartAPI (Official Exchange Feed)", "free": True},
                 {"id": "PAPER", "name": "Ultra-Fast Paper Feed (Groww & INDmoney Friendly)", "free": True},
-                {"id": "ANGEL_ONE", "name": "Angel One SmartAPI (Free WebSocket 2.0)", "free": True},
                 {"id": "DHAN", "name": "DhanHQ API (Free Fast WebSocket)", "free": True},
                 {"id": "ZERODHA", "name": "Zerodha Kite Connect (Paid API)", "free": False}
             ]
@@ -75,10 +90,9 @@ class BrokerGateway:
     def set_active_broker(self, broker_id: str, credentials: Optional[Dict[str, Any]] = None):
         self.active_broker = broker_id
         self.config["active_broker"] = broker_id
-        if credentials and broker_id in self.config["credentials"]:
+        if credentials and broker_id in self.config.get("credentials", {}):
             self.config["credentials"][broker_id].update(credentials)
         save_broker_config(self.config)
-        self.is_connected = True if broker_id == "PAPER" else False
         return self.get_status()
 
 broker_gateway = BrokerGateway()

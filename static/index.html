@@ -27,7 +27,6 @@
     })();
   </script>
   <script src="/static/lightweight-charts.js"></script>
-  <script src="https://s3.tradingview.com/tv.js"></script>
 </head>
 <body>
   <div id="app-dashboard" style="display: none; width: 100%; max-width: 100vw; overflow-x: hidden; box-sizing: border-box;">
@@ -260,23 +259,19 @@
         <button id="tf-1d" class="btn btn-secondary" style="padding: 3px 8px; font-size: 0.72rem;" onclick="switchTimeframe('1d')">1D</button>
       </div>
 
-      <!-- Engine Switcher & Indicators Toggles -->
+      <!-- Indicators Toggles -->
       <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-        <button id="btn-chart-engine" class="btn btn-primary" style="padding: 3px 10px; font-size: 0.74rem; font-weight: 800; background: #1D4ED8; border-color: #1E40AF;" onclick="toggleChartEngine()">⚡ TradingView Pro (INDstocks Feed)</button>
-        <button id="btn-ind-ema9" class="btn btn-primary" style="padding: 3px 9px; font-size: 0.72rem;" onclick="toggleIndicator('ema9')">EMA 9</button>
-        <button id="btn-ind-ema21" class="btn btn-primary" style="padding: 3px 9px; font-size: 0.72rem;" onclick="toggleIndicator('ema21')">EMA 21</button>
+        <span style="font-size: 0.75rem; font-weight: 700; color: #64748B; margin-right: 4px;">INDICATORS:</span>
+        <button id="btn-ind-ema9" class="btn btn-primary" style="padding: 3px 9px; font-size: 0.72rem;" onclick="toggleIndicator('ema9')">EMA 9 (Blue)</button>
+        <button id="btn-ind-ema21" class="btn btn-primary" style="padding: 3px 9px; font-size: 0.72rem;" onclick="toggleIndicator('ema21')">EMA 21 (Orange)</button>
         <button id="btn-ind-rsi" class="btn btn-secondary" style="padding: 3px 9px; font-size: 0.72rem;" onclick="toggleIndicator('rsi')">RSI (14)</button>
         <button id="btn-ind-vol" class="btn btn-primary" style="padding: 3px 9px; font-size: 0.72rem;" onclick="toggleIndicator('vol')">Volume</button>
+        <button id="btn-chart-type" class="btn btn-secondary" style="padding: 3px 9px; font-size: 0.72rem;" onclick="toggleChartType()">Candles</button>
       </div>
     </div>
 
-    <!-- Official TradingView Real-Time Chart (Exact same 0-delay exchange feed as INDstocks) -->
-    <div id="tv-chart-wrapper" style="position: relative; height: 500px; width: 100%; border-radius: 8px; border: 1.5px solid #CBD5E1; overflow: hidden; background: #FFFFFF; display: block;">
-      <div id="tradingview_advanced_container" style="width: 100%; height: 100%;"></div>
-    </div>
-
-    <!-- Native Lightweight Chart Container (Alternative Mode) -->
-    <div id="native-chart-wrapper" style="position: relative; height: 440px; width: 100%; border-radius: 8px 8px 0 0; border: 1.5px solid #CBD5E1; overflow: hidden; background: #FFFFFF; display: none;">
+    <!-- Native Lightweight Chart Container (100% Free, No Popups, Live NSE Data) -->
+    <div id="native-chart-wrapper" style="position: relative; height: 450px; width: 100%; border-radius: 8px 8px 0 0; border: 1.5px solid #CBD5E1; overflow: hidden; background: #FFFFFF; display: block;">
       <div id="lightweight_chart_container" style="width: 100%; height: 100%;"></div>
     </div>
 
@@ -711,12 +706,30 @@
           </select>
         </div>
 
-        <div id="broker-creds-container" style="display: none; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 10px; margin-bottom: 12px;">
-          <div style="font-size: 0.78rem; color: #64748B; margin-bottom: 8px;">
-            જો તમારી પાસે Angel One અથવા Dhan નું ફ્રી API હોય, તો નીચે એન્ટર કરીને સીધું ડાયરેક્ટ ઓટો-ટ્રેડિંગ ચાલુ કરી શકો છો:
+        <div id="broker-creds-container" style="display: none; background: #F8FAFC; border: 1.5px solid #CBD5E1; border-radius: 8px; padding: 12px; margin-bottom: 14px;">
+          <div style="font-size: 0.82rem; font-weight: 800; color: #1E293B; margin-bottom: 4px;">🔐 Angel One SmartAPI કનેક્શન:</div>
+          <div style="font-size: 0.75rem; color: #64748B; margin-bottom: 10px; line-height: 1.4;">
+            તમારા Angel One પોર્ટલ (smartapi.angelbroking.com) પરથી મેળવેલી વિગતો નીચે દાખલ કરો:
           </div>
-          <input type="text" id="broker-client-id" placeholder="Client ID / Code" style="width: 100%; padding: 7px; margin-bottom: 8px; border: 1px solid #CBD5E1; border-radius: 6px;" />
-          <input type="password" id="broker-api-key" placeholder="API Key / Token" style="width: 100%; padding: 7px; margin-bottom: 8px; border: 1px solid #CBD5E1; border-radius: 6px;" />
+          <div style="margin-bottom: 8px;">
+            <label style="font-size: 0.74rem; font-weight: 700; color: #475569;">Angel One Client Code (ID):</label>
+            <input type="text" id="broker-client-id" placeholder="દા.ત. R123456" style="width: 100%; padding: 7px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 0.85rem;" />
+          </div>
+          <div style="margin-bottom: 8px;">
+            <label style="font-size: 0.74rem; font-weight: 700; color: #475569;">4-Digit MPIN (પાસવર્ડ):</label>
+            <input type="password" id="broker-pin" placeholder="૪ અંકનો MPIN" style="width: 100%; padding: 7px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 0.85rem;" />
+          </div>
+          <div style="margin-bottom: 8px;">
+            <label style="font-size: 0.74rem; font-weight: 700; color: #475569;">SmartAPI Key:</label>
+            <input type="text" id="broker-api-key" placeholder="SmartAPI Key (Portal પરથી)" style="width: 100%; padding: 7px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 0.85rem;" />
+          </div>
+          <div style="margin-bottom: 10px;">
+            <label style="font-size: 0.74rem; font-weight: 700; color: #475569;">TOTP Secret Key (QR સ્કેન વાળો કોડ):</label>
+            <input type="password" id="broker-totp" placeholder="TOTP Secret Key" style="width: 100%; padding: 7px 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 0.85rem;" />
+          </div>
+          <button type="button" class="btn btn-primary" onclick="connectAngelOne()" id="btn-connect-angel" style="width: 100%; padding: 8px; font-weight: 800; font-size: 0.82rem; background: #2563EB;">
+            🚀 Angel One સાથે કનેક્ટ કરો
+          </button>
         </div>
 
         <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px; background: #FEF9C3; border: 1px solid #FDE047; border-radius: 8px; margin-bottom: 14px;">

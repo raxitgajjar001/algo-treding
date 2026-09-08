@@ -443,80 +443,6 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-let currentChartMode = 'TRADINGVIEW';
-let tvWidgetInstance = null;
-
-function getTradingViewSymbol(sym) {
-  const clean = (sym || 'NIFTY').replace('NSE:', '').replace('BSE:', '').toUpperCase();
-  const map = {
-    'NIFTY': 'NSE:NIFTY',
-    'BANKNIFTY': 'NSE:BANKNIFTY',
-    'SENSEX': 'BSE:SENSEX',
-    'FINNIFTY': 'NSE:FINNIFTY',
-    'INDIAVIX': 'NSE:INDIAVIX',
-    'RELIANCE': 'NSE:RELIANCE',
-    'HDFCBANK': 'NSE:HDFCBANK',
-    'SBIN': 'NSE:SBIN',
-    'TATAMOTORS': 'NSE:TATAMOTORS',
-    'ICICIBANK': 'NSE:ICICIBANK',
-    'TCS': 'NSE:TCS',
-    'INFY': 'NSE:INFY'
-  };
-  return map[clean] || `NSE:${clean}`;
-}
-
-function initTradingViewChart(sym = 'NIFTY', interval = '5m') {
-  const tvWrapper = document.getElementById('tv-chart-wrapper');
-  const nativeWrapper = document.getElementById('native-chart-wrapper');
-  if (tvWrapper) tvWrapper.style.display = 'block';
-  if (nativeWrapper) nativeWrapper.style.display = 'none';
-
-  const tvSym = getTradingViewSymbol(sym);
-  let tvTf = (interval || '5m').toLowerCase().replace('m', '').replace('h', '60').replace('d', 'D');
-
-  const container = document.getElementById('tradingview_advanced_container');
-  if (container && typeof TradingView !== 'undefined') {
-    container.innerHTML = '';
-    tvWidgetInstance = new TradingView.widget({
-      "autosize": true,
-      "symbol": tvSym,
-      "interval": tvTf,
-      "timezone": "Asia/Kolkata",
-      "theme": "light",
-      "style": "1",
-      "locale": "in",
-      "toolbar_bg": "#f1f3f6",
-      "enable_publishing": false,
-      "allow_symbol_change": true,
-      "container_id": "tradingview_advanced_container",
-      "studies": [
-        "MASimple@tv-basicstudies",
-        "RSI@tv-basicstudies"
-      ]
-    });
-  }
-}
-
-function toggleChartEngine() {
-  const btn = document.getElementById('btn-chart-engine');
-  const tvWrapper = document.getElementById('tv-chart-wrapper');
-  const nativeWrapper = document.getElementById('native-chart-wrapper');
-
-  if (currentChartMode === 'TRADINGVIEW') {
-    currentChartMode = 'NATIVE';
-    if (btn) btn.textContent = '📊 Native Chart (Switch to TradingView)';
-    if (tvWrapper) tvWrapper.style.display = 'none';
-    if (nativeWrapper) nativeWrapper.style.display = 'block';
-    initNativeChart(currentChartSymbol);
-  } else {
-    currentChartMode = 'TRADINGVIEW';
-    if (btn) btn.textContent = '⚡ TradingView Pro (INDstocks Feed)';
-    if (tvWrapper) tvWrapper.style.display = 'block';
-    if (nativeWrapper) nativeWrapper.style.display = 'none';
-    initTradingViewChart(currentChartSymbol, currentTimeframe);
-  }
-}
-
 function switchChart(rawSymbol) {
   const sym = rawSymbol.replace('NSE:', '').replace('BSE:', '').toUpperCase();
   currentChartSymbol = sym;
@@ -534,14 +460,10 @@ function switchChart(rawSymbol) {
     renderIndexCategoryItems(activeIndexCategory);
   }
 
-  if (currentChartMode === 'TRADINGVIEW') {
-    initTradingViewChart(sym, currentTimeframe);
+  if (!nativeChart) {
+    initNativeChart(sym);
   } else {
-    if (!nativeChart) {
-      initNativeChart(sym);
-    } else {
-      loadChartData(sym, currentTimeframe);
-    }
+    loadChartData(sym, currentTimeframe);
   }
 
   // Smooth scroll to chart on mobile for great UX
@@ -563,11 +485,7 @@ function switchTimeframe(tf) {
     }
   });
 
-  if (currentChartMode === 'TRADINGVIEW') {
-    initTradingViewChart(currentChartSymbol, tf);
-  } else {
-    loadChartData(currentChartSymbol, tf);
-  }
+  loadChartData(currentChartSymbol, tf);
 }
 
 function toggleIndicator(ind) {
@@ -2136,19 +2054,41 @@ function startDashboardLoops() {
   try { fetchTradeHistory(); } catch (e) { console.error('fetchTradeHistory err:', e); }
   try { fetchAccounts(); } catch (e) { console.error('fetchAccounts err:', e); }
   try { fetchNews(); } catch (e) { console.error('fetchNews err:', e); }
-  try {
-    initTradingViewChart('NIFTY', '5m');
-  } catch (e) {
-    try { initNativeChart('NIFTY'); } catch (err) {}
-  }
+  try { initNativeChart('NIFTY'); } catch (e) { console.error('initNativeChart err:', e); }
+  try { checkBrokerAndAngelStatus(); } catch (e) { console.error('checkBrokerAndAngelStatus err:', e); }
 
   setInterval(() => { try { fetchLiveTicks(); } catch(e){} }, 500);
   setInterval(() => { try { fetchActiveTrades(); } catch(e){} }, 1500);
   setInterval(() => { try { fetchStatus(); } catch(e){} }, 2000);
   setInterval(() => { try { fetchTradeHistory(); } catch(e){} }, 3000);
   setInterval(() => { try { fetchScanner(); } catch(e){} }, 5000);
+  setInterval(() => { try { checkBrokerAndAngelStatus(); } catch(e){} }, 10000);
   setInterval(() => { try { fetchIndexCategories(); } catch(e){} }, 12000);
   setInterval(() => { try { fetchNews(false); } catch(e){} }, 20000);
+}
+
+async function checkBrokerAndAngelStatus() {
+  try {
+    const res = await fetch('/api/broker/status');
+    const data = await res.json();
+    const latBadge = document.getElementById('latency-badge');
+    const brokerBtn = document.querySelector('button[onclick="openBrokerModal()"]');
+    if (data.active_broker === 'ANGEL_ONE' && data.is_connected) {
+      if (latBadge) {
+        latBadge.textContent = '🟢 ANGEL ONE: 0ms LIVE';
+        latBadge.style.background = '#DCFCE7';
+        latBadge.style.color = '#15803D';
+      }
+      if (brokerBtn) {
+        brokerBtn.innerHTML = '🔌 Angel One (લાઈવ કનેક્ટેડ)';
+        brokerBtn.style.background = '#DCFCE7';
+        brokerBtn.style.color = '#15803D';
+        brokerBtn.style.borderColor = '#86EFAC';
+      }
+      const bsel = document.getElementById('broker-select');
+      if (bsel) bsel.value = 'ANGEL_ONE';
+    }
+  } catch (e) {}
 }
 
 let activeMobileUrl = '';
@@ -2281,6 +2221,57 @@ function onBrokerSelectChange() {
   const cont = document.getElementById('broker-creds-container');
   if (sel && cont) {
     cont.style.display = (sel.value === 'ANGEL_ONE' || sel.value === 'DHAN' || sel.value === 'ZERODHA') ? 'block' : 'none';
+  }
+}
+
+async function connectAngelOne() {
+  const btn = document.getElementById('btn-connect-angel');
+  const clientCode = (document.getElementById('broker-client-id').value || '').trim();
+  const pin = (document.getElementById('broker-pin').value || '').trim();
+  const apiKey = (document.getElementById('broker-api-key').value || '').trim();
+  const totpSecret = (document.getElementById('broker-totp').value || '').trim();
+
+  if (!clientCode || !pin || !apiKey || !totpSecret) {
+    alert('કૃપા કરીને Client Code, 4-Digit MPIN, SmartAPI Key, અને TOTP Secret ચારેય વિગતો ભરો.');
+    return;
+  }
+
+  if (btn) {
+    btn.textContent = '⏳ કનેક્ટ થઈ રહ્યું છે...';
+    btn.disabled = true;
+  }
+
+  try {
+    const res = await fetch('/api/angel/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        client_code: clientCode,
+        pin: pin,
+        api_key: apiKey,
+        totp_secret: totpSecret
+      })
+    });
+    const data = await res.json();
+    if (data.status === 'success') {
+      alert('🎉 ' + data.message + '\nસ્વાગત છે, ' + (data.client_name || clientCode) + '!\nહવેથી સેકન્ડે-સેકન્ડનો 0ms લાઈવ ડેટા અને ઓટોમેશન શરૂ!');
+      closeBrokerModal();
+      const latBadge = document.getElementById('latency-badge');
+      if (latBadge) {
+        latBadge.textContent = '🟢 ANGEL ONE: 0ms LIVE';
+        latBadge.style.background = '#DCFCE7';
+        latBadge.style.color = '#15803D';
+      }
+    } else {
+      alert('❌ ભૂલ: ' + (data.message || 'Angel One કનેક્ટ ન થઈ શક્યું'));
+    }
+  } catch (err) {
+    alert('સર્વર કનેક્શન એરર: ' + err);
+  } finally {
+    if (btn) {
+      btn.textContent = '🚀 Angel One સાથે કનેક્ટ કરો';
+      btn.disabled = false;
+    }
   }
 }
 

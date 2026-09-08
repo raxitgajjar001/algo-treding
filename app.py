@@ -136,10 +136,22 @@ def update_all_ticks_background():
     t0 = time.time()
     ticks = dict(REAL_LIVE_TICKS_CACHE.get("ticks", {}))
 
-    # 0. Primary: Direct from official NSE exchange (0s delay)
+    # 0. Primary: Official Angel One SmartAPI live ticks
+    try:
+        from angel_one_service import angel_one_service
+        if angel_one_service.is_authenticated:
+            for idx in ["NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "SENSEX"]:
+                ltp_info = angel_one_service.get_ltp(idx)
+                if ltp_info:
+                    ticks[idx] = {"ltp": ltp_info["ltp"], "change_pct": ltp_info["change_pct"]}
+    except Exception:
+        pass
+
+    # 1. Fallback: Direct from official NSE exchange (0s delay)
     nse_ticks = fetch_nse_official_indices()
     for name, data in nse_ticks.items():
-        ticks[name] = data
+        if name not in ticks:
+            ticks[name] = data
 
     # 1. Fetch remaining market prices concurrently across threads
     results = list(TICK_EXECUTOR.map(fetch_single_ticker, SYMBOLS_FETCH_MAP.items()))
@@ -717,6 +729,33 @@ def get_market_chart(symbol: str, interval: str = "5m"):
     # Check if this is an F&O Option Contract
     is_option = ("_CE" in sym) or ("_PE" in sym) or ("_CALL_" in sym) or ("_PUT_" in sym)
 
+    # 0. Try Angel One SmartAPI Official Exchange Candles (Zero Delay, 100% accurate)
+    try:
+        from angel_one_service import angel_one_service
+        if angel_one_service.is_authenticated:
+            angel_candles = angel_one_service.get_candles(sym, tf_interval)
+            if angel_candles and len(angel_candles) > 0:
+                volumes = [
+                    {
+                        "time": c["time"],
+                        "value": c.get("volume", 0),
+                        "color": "rgba(22, 163, 74, 0.45)" if c["close"] >= c["open"] else "rgba(220, 38, 38, 0.45)"
+                    }
+                    for c in angel_candles
+                ]
+                result_payload = {
+                    "symbol": sym,
+                    "real_market": True,
+                    "source": "Angel One Official Exchange Feed",
+                    "current_price": angel_candles[-1]["close"],
+                    "candles": angel_candles,
+                    "volumes": volumes
+                }
+                CHART_CACHE[cache_key] = {"time": now, "data": result_payload}
+                return result_payload
+    except Exception:
+        pass
+
     # Try Yahoo Finance for real Indian market candles
     ticker = YAHOO_SYMBOL_MAP.get(sym)
     if not ticker and not is_option:
@@ -851,6 +890,30 @@ def configure_broker(payload: Dict[str, Any]):
     creds = payload.get("credentials")
     res = broker_gateway.set_active_broker(broker_id, creds)
     return {"status": "success", "data": res}
+
+from angel_one_service import angel_one_service
+
+@app.get("/api/angel/status")
+def get_angel_status():
+    cfg = angel_one_service.config
+    return {
+        "is_authenticated": angel_one_service.is_authenticated,
+        "client_code": cfg.get("client_code", ""),
+        "has_credentials": bool(cfg.get("client_code") and cfg.get("api_key"))
+    }
+
+@app.post("/api/angel/login")
+def angel_login(payload: Dict[str, Any]):
+    client_code = payload.get("client_code", "")
+    pin = payload.get("pin", "")
+    api_key = payload.get("api_key", "")
+    totp_secret = payload.get("totp_secret", "")
+    res = angel_one_service.login(client_code, pin, api_key, totp_secret)
+    return res
+
+@app.get("/api/angel/funds")
+def get_angel_funds():
+    return angel_one_service.get_funds()
 
 
 

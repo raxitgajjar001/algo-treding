@@ -3,3 +3,5 @@ __pycache__/
 cloudflared.exe
 .env
 .venv/
+data/angel_config.json
+logs/
