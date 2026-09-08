@@ -1,5 +1,6 @@
 import os
 import json
+import threading
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -10,6 +11,8 @@ SETTINGS_FILE = DATA_DIR / "settings.json"
 ACCOUNTS_FILE = DATA_DIR / "accounts.json"
 TRADES_FILE = DATA_DIR / "trades.json"
 NEWS_CACHE_FILE = DATA_DIR / "news_cache.json"
+
+SETTINGS_LOCK = threading.Lock()
 
 DEFAULT_SETTINGS = {
     "engine_active": False,
@@ -26,20 +29,38 @@ DEFAULT_SETTINGS = {
 }
 
 def get_settings():
-    if SETTINGS_FILE.exists():
-        try:
-            with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
-                saved = json.load(f)
-                merged = DEFAULT_SETTINGS.copy()
-                merged.update(saved)
-                return merged
-        except Exception:
-            return DEFAULT_SETTINGS.copy()
-    return DEFAULT_SETTINGS.copy()
+    with SETTINGS_LOCK:
+        if SETTINGS_FILE.exists():
+            try:
+                with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+                    saved = json.load(f)
+                    merged = DEFAULT_SETTINGS.copy()
+                    merged.update(saved)
+                    return merged
+            except Exception:
+                return DEFAULT_SETTINGS.copy()
+        return DEFAULT_SETTINGS.copy()
 
 def update_settings(new_settings: dict):
-    current = get_settings()
-    current.update(new_settings)
-    with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
-        json.dump(current, f, indent=2)
-    return current
+    with SETTINGS_LOCK:
+        try:
+            current = DEFAULT_SETTINGS.copy()
+            if SETTINGS_FILE.exists():
+                try:
+                    with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+                        saved = json.load(f)
+                        current.update(saved)
+                except Exception:
+                    pass
+            current.update(new_settings)
+            
+            # Atomic write to avoid file contention or WinError 32 on Windows
+            tmp_file = SETTINGS_FILE.with_suffix(".tmp")
+            with open(tmp_file, "w", encoding="utf-8") as f:
+                json.dump(current, f, indent=2)
+            os.replace(tmp_file, SETTINGS_FILE)
+            return current
+        except Exception as e:
+            print(f"[Settings] Error saving settings: {e}")
+            return DEFAULT_SETTINGS.copy()
+

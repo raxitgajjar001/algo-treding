@@ -44,7 +44,7 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from typing import Dict, Any
 
 from config import BASE_DIR, get_settings, update_settings
@@ -356,22 +356,52 @@ def get_status():
     }
 
 @app.post('/api/engine/toggle')
+@app.post('/api/engine/pause')
 def toggle_engine():
-    timing = get_market_timing()
-    if not timing['is_open']:
-        engine.is_running = False
-        return {
-            'status': 'blocked',
-            'is_running': False,
-            'market_open': False,
-            'message': 'બજાર અત્યારે બંધ છે (03:30 PM પછી). ઓટો ટ્રેડિંગ ફક્ત લાઈવ માર્કેટમાં (સોમવારથી શુક્રવાર સવારે 09:15 થી બપોરે 03:30 દરમિયાન) જ શરૂ કરી શકાશે.'
-        }
-    if engine.is_running:
-        engine.stop()
-        return {'is_running': False, 'market_open': timing['is_open'], 'message': 'Trading Engine Stopped'}
-    else:
-        started = engine.start()
-        return {'is_running': started, 'market_open': True, 'message': 'Trading Engine Started'}
+    try:
+        timing = get_market_timing()
+        if not timing.get('is_open', False):
+            engine.is_running = False
+            try:
+                update_settings({'engine_active': False})
+            except Exception as se:
+                print(f"[Engine Toggle] Settings error: {se}")
+            return JSONResponse(
+                status_code=200,
+                content={
+                    'status': 'blocked',
+                    'is_running': False,
+                    'market_open': False,
+                    'message': 'બજાર અત્યારે બંધ છે (03:30 PM પછી). ઓટો ટ્રેડિંગ ફક્ત લાઈવ માર્કેટમાં (સોમવારથી શુક્રવાર સવારે 09:15 થી બપોરે 03:30 દરમિયાન) જ શરૂ કરી શકાશે.'
+                }
+            )
+
+        if engine.is_running:
+            engine.stop()
+            try:
+                update_settings({'engine_active': False})
+            except Exception as se:
+                print(f"[Engine Stop] Settings error: {se}")
+            return JSONResponse(
+                status_code=200,
+                content={'status': 'success', 'is_running': False, 'market_open': timing['is_open'], 'message': 'Trading Engine Paused (અલ્ગો થોભાવેલ છે)'}
+            )
+        else:
+            started = engine.start()
+            try:
+                update_settings({'engine_active': bool(started)})
+            except Exception as se:
+                print(f"[Engine Start] Settings error: {se}")
+            return JSONResponse(
+                status_code=200,
+                content={'status': 'success', 'is_running': bool(started), 'market_open': True, 'message': 'Trading Engine Started (અલ્ગો શરૂ થયેલ છે)'}
+            )
+    except Exception as e:
+        engine.log(f"Engine state error: {str(e)}", "DANGER")
+        return JSONResponse(
+            status_code=500,
+            content={'status': 'error', 'is_running': engine.is_running, 'message': f'એન્જિન સ્વિચ કરવામાં એરર: {str(e)}'}
+        )
 
 @app.post('/api/engine/mode')
 def set_mode(payload: Dict[str, str]):
@@ -599,15 +629,62 @@ def scalper_quotes_route(symbol: str = "NIFTY", lots: int = 1):
     }
 
 @app.post('/api/scalper/order')
-def scalper_order_route(payload: Dict[str, Any]):
-    und = payload.get("symbol", "NIFTY")
-    opt_type = payload.get("option_type", "CE")
-    lots = int(payload.get("lots", 1))
-    sl_pts = float(payload.get("sl_pts", 15.0))
-    tgt_pts = float(payload.get("tgt_pts", 30.0))
-    order_type = payload.get("order_type", "LIMIT")
-    res = engine.place_scalper_trade(und, opt_type, lots, sl_pts, tgt_pts, order_type)
-    return res
+def scalper_order_route(payload: Dict[str, Any] = None):
+    try:
+        if not payload or not isinstance(payload, dict):
+            return JSONResponse(
+                status_code=400,
+                content={"status": "error", "message": "અમાન્ય વિનંતી: પેલોડ મળ્યો નથી (Invalid payload)"}
+            )
+
+        und = str(payload.get("symbol", "NIFTY")).upper().strip()
+        opt_type = str(payload.get("option_type", "CE")).upper().strip()
+        if opt_type not in ("CE", "PE"):
+            opt_type = "CE"
+
+        try:
+            lots = max(1, min(100, int(payload.get("lots", 1))))
+        except (ValueError, TypeError):
+            lots = 1
+
+        try:
+            sl_pts = max(1.0, float(payload.get("sl_pts", 15.0)))
+        except (ValueError, TypeError):
+            sl_pts = 15.0
+
+        try:
+            tgt_pts = max(1.0, float(payload.get("tgt_pts", 30.0)))
+        except (ValueError, TypeError):
+            tgt_pts = 30.0
+
+        order_type = str(payload.get("order_type", "LIMIT")).upper().strip()
+        if order_type not in ("LIMIT", "MARKET"):
+            order_type = "LIMIT"
+
+        res = engine.place_scalper_trade(und, opt_type, lots, sl_pts, tgt_pts, order_type)
+        if not isinstance(res, dict):
+            res = {"status": "error", "message": "ઓર્ડર પ્લેસમેન્ટ નિષ્ફળ થયું"}
+
+        status_code = 200
+        if res.get("status") == "error":
+            status_code = 400
+        elif res.get("status") == "warning":
+            status_code = 429
+        elif res.get("status") == "success":
+            status_code = 200
+
+        return JSONResponse(status_code=status_code, content=res)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        engine.log(f"Scalper Order Exception: {str(e)}", "DANGER")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "status": "error",
+                "message": f"ઓર્ડર એક્ઝિક્યુશનમાં એરર: {str(e)}"
+            }
+        )
 
 @app.post('/api/trades/close/{trade_id}')
 def manual_close_trade(trade_id: str):
@@ -775,6 +852,52 @@ def get_market_depth(symbol: str):
         "timestamp": time.time()
     }
 
+def sanitize_candles(candles_list):
+    """Sanitize candlestick data feed: drops outlier/corrupt ticks and eliminates spiked candles."""
+    if not candles_list:
+        return []
+    cleaned = []
+    for c in candles_list:
+        try:
+            o = float(c.get("open", 0))
+            h = float(c.get("high", 0))
+            l = float(c.get("low", 0))
+            cl = float(c.get("close", 0))
+            t = c.get("time")
+            if o <= 0 or cl <= 0 or h <= 0 or l <= 0:
+                continue
+
+            # Basic logic: High is highest, Low is lowest
+            if h < max(o, cl): h = max(o, cl)
+            if l > min(o, cl): l = min(o, cl)
+
+            # Eliminate outlier spiked candles compared to previous candle
+            if cleaned:
+                prev_c = cleaned[-1]["close"]
+                if prev_c > 0:
+                    # If whole bar is an absurd outlier (> 10% jump without continuity), clamp close
+                    if abs(cl - prev_c) / prev_c > 0.10:
+                        cl = prev_c * (1.03 if cl > prev_c else 0.97)
+                    # Eliminate needle spike wicks extending > 4% past candle body
+                    max_b = max(o, cl)
+                    min_b = min(o, cl)
+                    if h > max_b * 1.04:
+                        h = max_b * 1.04
+                    if l < min_b * 0.96:
+                        l = min_b * 0.96
+
+            cleaned.append({
+                "time": t,
+                "open": round(o, 2),
+                "high": round(h, 2),
+                "low": round(l, 2),
+                "close": round(cl, 2),
+                "volume": int(c.get("volume", 0))
+            })
+        except Exception:
+            continue
+    return cleaned
+
 @app.get("/api/market/chart/{symbol}")
 def get_market_chart(symbol: str, interval: str = "5m"):
     sym = symbol.upper().replace("NSE:", "").replace("BSE:", "").strip()
@@ -804,23 +927,34 @@ def get_market_chart(symbol: str, interval: str = "5m"):
     now_ist_epoch = int(now + IST_OFFSET)
     bucket_time = (now_ist_epoch // tf_sec) * tf_sec
 
-    # Helper function to append or update latest live tick on candle series
+    # Helper function to append or update latest live tick on candle series with Bad Tick Filter
     def overlay_live_tick(candles_list, current_ltp):
         if not candles_list or current_ltp is None or current_ltp <= 0:
             return
         last_c = candles_list[-1]
+        prev_close = float(last_c.get("close") or last_c.get("open", 0))
+
+        # Bad Tick Filter: Drop outlier ticks where price deviates logically (> 3.5%) from previous candle
+        if prev_close > 0:
+            pct_dev = abs(current_ltp - prev_close) / prev_close
+            if pct_dev > 0.035:
+                return  # Drop outlier tick to eliminate spiked candle
+
+        max_allowed_high = prev_close * 1.04 if prev_close > 0 else current_ltp * 1.04
+        min_allowed_low = prev_close * 0.96 if prev_close > 0 else current_ltp * 0.96
+        clamped_ltp = max(min_allowed_low, min(max_allowed_high, current_ltp))
+
         if bucket_time == last_c["time"]:
-            last_c["close"] = current_ltp
-            if current_ltp > last_c["high"]: last_c["high"] = current_ltp
-            if current_ltp < last_c["low"]: last_c["low"] = current_ltp
+            last_c["close"] = clamped_ltp
+            if clamped_ltp > last_c["high"]: last_c["high"] = clamped_ltp
+            if clamped_ltp < last_c["low"]: last_c["low"] = clamped_ltp
         elif bucket_time > last_c["time"]:
-            # If next timeframe has elapsed, append active live candle seamlessly
             candles_list.append({
                 "time": bucket_time,
                 "open": last_c["close"],
-                "high": max(last_c["close"], current_ltp),
-                "low": min(last_c["close"], current_ltp),
-                "close": current_ltp,
+                "high": max(last_c["close"], clamped_ltp),
+                "low": min(last_c["close"], clamped_ltp),
+                "close": clamped_ltp,
                 "volume": 0
             })
 
@@ -833,6 +967,7 @@ def get_market_chart(symbol: str, interval: str = "5m"):
         if current_ltp and cached["data"].get("candles"):
             overlay_live_tick(cached["data"]["candles"], current_ltp)
             cached["data"]["current_price"] = current_ltp
+        cached["data"]["candles"] = sanitize_candles(cached["data"]["candles"])
         return cached["data"]
 
     # 2. Try Angel One SmartAPI Official Exchange Candles (Zero Delay, 100% accurate)
@@ -844,20 +979,21 @@ def get_market_chart(symbol: str, interval: str = "5m"):
                 if current_ltp:
                     overlay_live_tick(angel_candles, current_ltp)
 
+                clean_candles = sanitize_candles(angel_candles)
                 volumes = [
                     {
                         "time": c["time"],
                         "value": c.get("volume", 0),
                         "color": "rgba(22, 163, 74, 0.45)" if c["close"] >= c["open"] else "rgba(220, 38, 38, 0.45)"
                     }
-                    for c in angel_candles
+                    for c in clean_candles
                 ]
                 result_payload = {
                     "symbol": sym,
                     "real_market": True,
                     "source": "Angel One Official Feed (0s Delay)",
-                    "current_price": angel_candles[-1]["close"],
-                    "candles": angel_candles,
+                    "current_price": clean_candles[-1]["close"],
+                    "candles": clean_candles,
                     "volumes": volumes
                 }
                 CHART_CACHE[cache_key] = {"time": now, "data": result_payload}
@@ -917,12 +1053,13 @@ def get_market_chart(symbol: str, interval: str = "5m"):
         })
         p = c
 
+    clean_candles = sanitize_candles(candles)
     result_payload = {
         "symbol": sym,
         "real_market": bool(current_ltp is not None),
         "source": "Angel One Live Spot Stream",
-        "current_price": candles[-1]["close"],
-        "candles": candles,
+        "current_price": clean_candles[-1]["close"] if clean_candles else base,
+        "candles": clean_candles,
         "volumes": volumes
     }
     CHART_CACHE[cache_key] = {"time": now, "data": result_payload}

@@ -2,7 +2,7 @@ import time
 import json
 import uuid
 from typing import List, Dict
-from config import TRADES_FILE, get_settings
+from config import TRADES_FILE, get_settings, update_settings
 from account_manager import get_active_accounts
 from indstocks_client import INDstocksClient
 from risk_manager import RiskManager
@@ -13,7 +13,8 @@ class TradingEngine:
     def __init__(self):
         self.risk_manager = RiskManager()
         self.scanner = MarketScanner()
-        self.is_running = False
+        settings = get_settings()
+        self.is_running = bool(settings.get("engine_active", False)) and self.is_indian_market_open()
         self.active_trades: List[Dict] = []
         self.trade_history: List[Dict] = []
         self.daily_realized_pnl: float = 0.0
@@ -69,9 +70,11 @@ class TradingEngine:
     def start(self) -> bool:
         if not self.is_indian_market_open():
             self.is_running = False
+            update_settings({"engine_active": False})
             self.log("બજાર બંધ હોવાથી ઓટો ટ્રેડિંગ શરૂ થઈ શકે નહીં (સવારે 09:15 થી બપોરે 03:30 દરમિયાન જ શરૂ થશે).", "WARNING")
             return False
         self.is_running = True
+        update_settings({"engine_active": True})
         self.risk_manager.emergency_halt = False
         self.engine_started_at = time.time()
         self.last_entry_time = 0
@@ -80,6 +83,7 @@ class TradingEngine:
 
     def stop(self):
         self.is_running = False
+        update_settings({"engine_active": False})
         self.log("Trading Engine Paused (ઓટો ટ્રેડિંગ થોભાવ્યું)", "WARNING")
 
     def execute_cycle(self):
@@ -91,6 +95,7 @@ class TradingEngine:
         if not self.is_indian_market_open():
             if self.is_running:
                 self.is_running = False
+                update_settings({"engine_active": False})
                 self.log("બજાર બંધ હોવાથી ઓટો ટ્રેડિંગ સંપૂર્ણપણે બંધ છે.", "INFO")
             return
 
@@ -416,118 +421,125 @@ class TradingEngine:
 
     def place_scalper_trade(self, underlying: str = "NIFTY", option_type: str = "CE", lots: int = 1, sl_pts: float = 15.0, tgt_pts: float = 30.0, order_type: str = "LIMIT") -> Dict:
         """Execute 1-click Pro Scalper Order (ATM CE / ATM PE) with auto SL, Target, and Limit Order support"""
-        und_key = underlying.upper()
-
-        # Check Post-Trade Cool-Down
-        cd_until = self.cooldowns.get(und_key, 0.0)
-        now = time.time()
-        if now < cd_until:
-            rem = int(cd_until - now)
-            return {
-                "status": "warning",
-                "message": f"⏳ કૂલ-ડાઉન મોડ સક્રિય: {und_key} માં ઓવર-ટ્રેડિંગ અટકાવવા {rem} સેકન્ડ રાહ જુઓ."
-            }
-
-        from angel_one_service import angel_one_service
-        from config import get_settings
-        
-        # 1. Fetch live spot price from RAM cache
-        spot = 23553.0
         try:
-            import app
-            spot = float(app.REAL_LIVE_TICKS_CACHE.get("ticks", {}).get(und_key, {}).get("ltp", 23553.0))
-        except Exception:
-            pass
+            und_key = str(underlying).upper().strip()
+            opt_type = str(option_type).upper().strip()
+            if opt_type not in ("CE", "PE"):
+                opt_type = "CE"
+
+            # Check Post-Trade Cool-Down
+            cd_until = self.cooldowns.get(und_key, 0.0)
+            now = time.time()
+            if now < cd_until:
+                rem = int(cd_until - now)
+                return {
+                    "status": "warning",
+                    "message": f"⏳ કૂલ-ડાઉન મોડ સક્રિય: {und_key} માં ઓવર-ટ્રેડિંગ અટકાવવા {rem} સેકન્ડ રાહ જુઓ."
+                }
+
+            from angel_one_service import angel_one_service
+            from config import get_settings
             
-        opt_info = angel_one_service.get_atm_option_details(und_key, spot, option_type)
-        symbol = opt_info["tradingsymbol"]
-        lot_size = opt_info["lot_size"]
-        qty = int(lots * lot_size)
-        entry_price = opt_info["estimated_premium"]
-        
-        invested_capital = round(entry_price * qty, 2)
+            # 1. Fetch live spot price from RAM cache
+            spot = 23553.0
+            try:
+                import app
+                spot = float(app.REAL_LIVE_TICKS_CACHE.get("ticks", {}).get(und_key, {}).get("ltp", 23553.0))
+            except Exception:
+                pass
+                
+            opt_info = angel_one_service.get_atm_option_details(und_key, spot, opt_type)
+            symbol = opt_info.get("tradingsymbol", f"{und_key}_ATM_{opt_type}")
+            lot_size = int(opt_info.get("lot_size", 75 if und_key == "NIFTY" else 30))
+            qty = int(lots * lot_size)
+            entry_price = float(opt_info.get("estimated_premium", 120.0))
+            
+            invested_capital = round(entry_price * qty, 2)
 
-        # 2. Risk Pool Cap Check (25% maximum capital allocation)
-        from account_manager import account_manager
-        accs = account_manager.load_accounts()
-        acc = accs[0] if accs else {"total_capital": 100000.0, "capital_allocation_pct": 25.0}
-        tot_cap = float(acc.get("total_capital", 100000.0))
-        alloc_pct = float(acc.get("capital_allocation_pct", 25.0))
-        max_pool = tot_cap * (alloc_pct / 100.0)
-        used_cap = sum(float(t.get("entry_price", 0.0)) * int(t.get("qty", 1)) for t in self.active_trades)
-        if (used_cap + invested_capital) > max_pool:
-            rem_cap = max(0.0, max_pool - used_cap)
-            return {
-                "status": "error",
-                "message": f"⚠️ રિસ્ક પૂલ મર્યાદા (25% Cap): તમારા પૂલમાં માત્ર ₹{rem_cap:,.2f} બાકી છે (જરૂરી: ₹{invested_capital:,.2f}). લોટ ઓછા કરો."
+            # 2. Risk Pool Cap Check (25% maximum capital allocation)
+            import account_manager
+            accs = account_manager.load_accounts()
+            acc = accs[0] if accs else {"total_capital": 100000.0, "capital_allocation_pct": 25.0}
+            tot_cap = float(acc.get("total_capital", 100000.0))
+            alloc_pct = float(acc.get("capital_allocation_pct", 25.0))
+            max_pool = tot_cap * (alloc_pct / 100.0)
+            used_cap = sum(float(t.get("entry_price", 0.0)) * int(t.get("qty", 1)) for t in self.active_trades)
+            if (used_cap + invested_capital) > max_pool:
+                rem_cap = max(0.0, max_pool - used_cap)
+                return {
+                    "status": "error",
+                    "message": f"⚠️ રિસ્ક પૂલ મર્યાદા (25% Cap): તમારા પૂલમાં માત્ર ₹{rem_cap:,.2f} બાકી છે (જરૂરી: ₹{invested_capital:,.2f}). લોટ ઓછા કરો."
+                }
+
+            settings = get_settings()
+            mode = settings.get("mode", "PAPER")
+            
+            target_price = round(entry_price + tgt_pts, 1)
+            stoploss_price = round(max(1.0, entry_price - sl_pts), 1)
+
+            # Slippage Protection: In LIMIT mode, set limit price at entry_price + 0.50 pts buffer
+            exec_type = order_type.upper() if order_type else "LIMIT"
+            limit_price = round(entry_price + 0.50, 1) if exec_type == "LIMIT" else 0.0
+            
+            order_id = f"SCALP-{uuid.uuid4().hex[:8].upper()}"
+            if mode in ("LIVE", "REAL") and angel_one_service.is_authenticated:
+                res = angel_one_service.place_order(
+                    tradingsymbol=symbol,
+                    symboltoken="0",
+                    exchange="NFO" if und_key != "SENSEX" else "BFO",
+                    transaction_type="BUY",
+                    quantity=qty,
+                    order_type=exec_type,
+                    price=limit_price
+                )
+                if isinstance(res, dict) and res.get("status") == "success":
+                    order_id = str(res.get("order_id", order_id))
+            
+            new_trade = {
+                "id": f"TRD-{uuid.uuid4().hex[:8].upper()}",
+                "account_id": "ACC-PRIMARY",
+                "account_name": "Angel One Trading",
+                "symbol": symbol,
+                "security_id": "0",
+                "underlying": und_key,
+                "strike": opt_info.get("strike", 23650),
+                "option_type": opt_type,
+                "lot_size": lot_size,
+                "lots_count": lots,
+                "qty": qty,
+                "entry_price": entry_price,
+                "current_price": entry_price,
+                "entry_spot": spot,
+                "points_diff": 0.0,
+                "invested_capital": invested_capital,
+                "target_price": target_price,
+                "target_pct": round((tgt_pts / entry_price) * 100.0, 1) if entry_price > 0 else 20.0,
+                "target_pts": tgt_pts,
+                "stoploss_price": stoploss_price,
+                "stoploss_pct": round((sl_pts / entry_price) * 100.0, 1) if entry_price > 0 else 10.0,
+                "stoploss_pts": sl_pts,
+                "direction": "BUY",
+                "direction_label": f"🟢 BUY CALL (CE)" if opt_type == "CE" else f"🔴 BUY PUT (PE)",
+                "entry_time": time.time(),
+                "entry_date": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "order_id": order_id,
+                "mode": mode,
+                "gross_pnl": 0.0,
+                "brokerage_charges": 48.5,
+                "unrealized_pnl": 0.0,
+                "net_pnl": 0.0,
+                "pnl_pct": 0.0,
+                "order_type": exec_type,
+                "limit_price": limit_price
             }
-
-        settings = get_settings()
-        mode = settings.get("mode", "PAPER")
-        
-        target_price = round(entry_price + tgt_pts, 1)
-        stoploss_price = round(max(1.0, entry_price - sl_pts), 1)
-
-        # Slippage Protection: In LIMIT mode, set limit price at entry_price + 0.50 pts buffer
-        exec_type = order_type.upper() if order_type else "LIMIT"
-        limit_price = round(entry_price + 0.50, 1) if exec_type == "LIMIT" else 0.0
-        
-        order_id = f"SCALP-{uuid.uuid4().hex[:8].upper()}"
-        if mode in ("LIVE", "REAL") and angel_one_service.is_authenticated:
-            res = angel_one_service.place_order(
-                tradingsymbol=symbol,
-                symboltoken="0",
-                exchange="NFO" if und_key != "SENSEX" else "BFO",
-                transaction_type="BUY",
-                quantity=qty,
-                order_type=exec_type,
-                price=limit_price
-            )
-            if res.get("status") == "success":
-                order_id = str(res.get("order_id", order_id))
-        
-        new_trade = {
-            "id": f"TRD-{uuid.uuid4().hex[:8].upper()}",
-            "account_id": "ACC-PRIMARY",
-            "account_name": "Angel One Trading",
-            "symbol": symbol,
-            "security_id": "0",
-            "underlying": underlying.upper(),
-            "strike": opt_info["strike"],
-            "option_type": option_type.upper(),
-            "lot_size": lot_size,
-            "lots_count": lots,
-            "qty": qty,
-            "entry_price": entry_price,
-            "current_price": entry_price,
-            "entry_spot": spot,
-            "points_diff": 0.0,
-            "invested_capital": invested_capital,
-            "target_price": target_price,
-            "target_pct": round((tgt_pts / entry_price) * 100.0, 1) if entry_price > 0 else 20.0,
-            "target_pts": tgt_pts,
-            "stoploss_price": stoploss_price,
-            "stoploss_pct": round((sl_pts / entry_price) * 100.0, 1) if entry_price > 0 else 10.0,
-            "stoploss_pts": sl_pts,
-            "direction": "BUY",
-            "direction_label": f"🟢 BUY CALL (CE)" if option_type.upper() == "CE" else f"🔴 BUY PUT (PE)",
-            "entry_time": time.time(),
-            "entry_date": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "order_id": order_id,
-            "mode": mode,
-            "gross_pnl": 0.0,
-            "brokerage_charges": 48.5,
-            "unrealized_pnl": 0.0,
-            "net_pnl": 0.0,
-            "pnl_pct": 0.0,
-            "order_type": exec_type,
-            "limit_price": limit_price
-        }
-        
-        self.active_trades.insert(0, new_trade)
-        self.save_trades()
-        self.log(f"⚡ SCALPER EXECUTED ({exec_type}): {symbol} ({lots} Lot / {qty} Qty) @ ₹{entry_price} [Tgt: ₹{target_price} | SL: ₹{stoploss_price}] ({mode} Mode)", "SUCCESS")
-        return {"status": "success", "message": f"{symbol} ઓર્ડર સફળતાપૂર્વક પ્લેસ થયો ({exec_type})!", "trade": new_trade}
+            
+            self.active_trades.insert(0, new_trade)
+            self.save_trades()
+            self.log(f"⚡ SCALPER EXECUTED ({exec_type}): {symbol} ({lots} Lot / {qty} Qty) @ ₹{entry_price} [Tgt: ₹{target_price} | SL: ₹{stoploss_price}] ({mode} Mode)", "SUCCESS")
+            return {"status": "success", "message": f"{symbol} ઓર્ડર સફળતાપૂર્વક પ્લેસ થયો ({exec_type})!", "trade": new_trade}
+        except Exception as e:
+            self.log(f"Scalper execution failed: {str(e)}", "DANGER")
+            return {"status": "error", "message": f"ઓર્ડર એક્ઝિક્યુશનમાં એરર: {str(e)}"}
 
     def get_dashboard_summary(self) -> Dict:
         active_accounts = get_active_accounts()

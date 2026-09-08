@@ -293,6 +293,48 @@ function renderChartData(isBackground = false) {
   nativeChart.timeScale().scrollToPosition(0, false);
 }
 
+function sanitizeClientCandles(candles) {
+  if (!Array.isArray(candles)) return [];
+  const sanitized = [];
+  for (let i = 0; i < candles.length; i++) {
+    const c = candles[i];
+    if (!c) continue;
+    let o = Number(c.open);
+    let h = Number(c.high);
+    let l = Number(c.low);
+    let cl = Number(c.close);
+    if (isNaN(o) || isNaN(h) || isNaN(l) || isNaN(cl) || o <= 0 || cl <= 0) continue;
+
+    // High must be highest, Low must be lowest
+    h = Math.max(h, o, cl);
+    l = Math.min(l, o, cl);
+
+    // Bad Tick Filter: Check for logical continuity from previous candle
+    if (sanitized.length > 0) {
+      const prev = sanitized[sanitized.length - 1];
+      const prevClose = prev.close;
+      if (prevClose > 0) {
+        if (Math.abs(cl - prevClose) / prevClose > 0.12) {
+          cl = prevClose * (cl > prevClose ? 1.03 : 0.97);
+        }
+        const maxBody = Math.max(o, cl);
+        const minBody = Math.min(o, cl);
+        if (h > maxBody * 1.04) h = maxBody * 1.04;
+        if (l < minBody * 0.96) l = minBody * 0.96;
+      }
+    }
+
+    sanitized.push({
+      time: c.time,
+      open: parseFloat(o.toFixed(2)),
+      high: parseFloat(h.toFixed(2)),
+      low: parseFloat(l.toFixed(2)),
+      close: parseFloat(cl.toFixed(2))
+    });
+  }
+  return sanitized;
+}
+
 async function loadChartData(symbol, timeframe = currentTimeframe, isBackground = false) {
   const sym = symbol.replace('NSE:', '').replace('BSE:', '').toUpperCase();
   currentChartSymbol = sym;
@@ -307,9 +349,9 @@ async function loadChartData(symbol, timeframe = currentTimeframe, isBackground 
     const data = await res.json();
     
     if (data.candles && data.candles.length > 0) {
-      allCandles = data.candles;
+      allCandles = sanitizeClientCandles(data.candles);
       allVolumes = data.volumes || [];
-      currentCandle = { ...data.candles[data.candles.length - 1] };
+      currentCandle = allCandles.length > 0 ? { ...allCandles[allCandles.length - 1] } : null;
       
       if (ltpElem && currentCandle) {
         ltpElem.textContent = '₹' + Number(currentCandle.close).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
@@ -832,15 +874,26 @@ async function executeScalpOrder(optType) {
         order_type: currentScalpOrderType
       })
     });
-    const data = await res.json();
-    if (data.status === 'success') {
+    
+    let data = null;
+    try {
+      data = await res.json();
+    } catch (parseErr) {
+      console.error('Non-JSON response received:', parseErr);
+      alert(`❌ સર્વર એરર: સર્વરે અમાન્ય પ્રતિસાદ આપ્યો (HTTP ${res.status}). કૃપા કરીને થોડીવાર પછી ફરી પ્રયાસ કરો.`);
+      return;
+    }
+
+    if (data && data.status === 'success') {
       const t = data.trade;
       const orderTypeTxt = t.order_type === 'LIMIT' ? `LIMIT @ ₹${t.limit_price} (સ્લિપેજ રક્ષણ)` : 'MARKET';
       alert(`⚡ SCALPER EXECUTION SUCCESSFUL!\n----------------------------------------\nકોન્ટ્રાક્ટ: ${t.symbol}\nપ્રકાર: ${t.direction_label}\nઓર્ડર પ્રકાર: ${orderTypeTxt}\nલૉટ: ${t.lots_count} Lot (${t.qty} Qty)\nખરીદ ભાવ: ₹${t.entry_price}\nસ્ટોપલોસ (SL): ₹${t.stoploss_price} (-${t.stoploss_pts} pts)\nટાર્ગેટ (TGT): ₹${t.target_price} (+${t.target_pts} pts)\nમોડ: ${t.mode} TRADING\n----------------------------------------\nટ્રેડ સક્રિય પોઝિશનમાં ઉમેરાઈ ગયો છે.`);
       fetchActiveTrades();
       fetchStatus();
+    } else if (data && data.status === 'warning') {
+      alert(`⏳ નોટિસ: ${data.message}`);
     } else {
-      alert(`❌ ઓર્ડર નિષ્ફળ:\n${data.message || 'અજ્ઞાત એરર'}`);
+      alert(`❌ ઓર્ડર નિષ્ફળ:\n${(data && data.message) ? data.message : 'અજ્ઞાત એરર'}`);
     }
   } catch (err) {
     alert(`સર્વર કનેક્શન એરર: ${err}`);
@@ -967,7 +1020,24 @@ async function fetchLiveTicks() {
     // 3. Stream Active Candlestick on Chart in Real Time (< 0.5s sub-second tick)
     const currentTick = ticks[currentChartSymbol];
     if (nativeChart && currentTick && currentTick.ltp !== undefined && allCandles && allCandles.length > 0) {
-      const newClose = Number(currentTick.ltp);
+      const rawClose = Number(currentTick.ltp);
+      if (isNaN(rawClose) || rawClose <= 0) return;
+
+      let lastCandle = allCandles[allCandles.length - 1];
+      const prevRef = lastCandle.close || lastCandle.open;
+
+      // Bad Tick Filter: Drop outlier ticks where price deviates logically (> 3.5%) from previous candle
+      if (prevRef > 0) {
+        const tickDev = Math.abs(rawClose - prevRef) / prevRef;
+        if (tickDev > 0.035) {
+          // Outlier tick dropped to eliminate spiked candles
+          return;
+        }
+      }
+
+      const newClose = rawClose;
+      const maxAllowedHigh = prevRef > 0 ? prevRef * 1.04 : newClose * 1.04;
+      const minAllowedLow = prevRef > 0 ? prevRef * 0.96 : newClose * 0.96;
 
       function getTfSeconds(tf) {
         switch ((tf || '').toLowerCase()) {
@@ -986,14 +1056,12 @@ async function fetchLiveTicks() {
       const nowIstEpoch = Math.floor(Date.now() / 1000) + IST_OFFSET;
       const bucketTime = Math.floor(nowIstEpoch / tfSec) * tfSec;
 
-      let lastCandle = allCandles[allCandles.length - 1];
-
       if (typeof lastCandle.time === 'number') {
         if (bucketTime === lastCandle.time) {
-          // Update active candle in-place
+          // Update active candle in-place without spiked wicks
           lastCandle.close = newClose;
-          if (newClose > lastCandle.high) lastCandle.high = newClose;
-          if (newClose < lastCandle.low) lastCandle.low = newClose;
+          if (newClose > lastCandle.high) lastCandle.high = Math.min(maxAllowedHigh, newClose);
+          if (newClose < lastCandle.low) lastCandle.low = Math.max(minAllowedLow, newClose);
           currentCandle = lastCandle;
           if (indicatorsState.chartType === 'candles' && candleSeries) {
             candleSeries.update(lastCandle);
@@ -1006,8 +1074,8 @@ async function fetchLiveTicks() {
             const newCandle = {
               time: bucketTime,
               open: lastCandle.close,
-              high: Math.max(lastCandle.close, newClose),
-              low: Math.min(lastCandle.close, newClose),
+              high: Math.min(maxAllowedHigh, Math.max(lastCandle.close, newClose)),
+              low: Math.max(minAllowedLow, Math.min(lastCandle.close, newClose)),
               close: newClose
             };
             allCandles.push(newCandle);
@@ -1025,8 +1093,8 @@ async function fetchLiveTicks() {
         }
       } else {
         lastCandle.close = newClose;
-        if (newClose > lastCandle.high) lastCandle.high = newClose;
-        if (newClose < lastCandle.low) lastCandle.low = newClose;
+        if (newClose > lastCandle.high) lastCandle.high = Math.min(maxAllowedHigh, newClose);
+        if (newClose < lastCandle.low) lastCandle.low = Math.max(minAllowedLow, newClose);
         currentCandle = lastCandle;
         if (indicatorsState.chartType === 'candles' && candleSeries) {
           candleSeries.update(lastCandle);
