@@ -645,8 +645,26 @@ CHART_CACHE = {}
 
 @app.get('/api/market/indices')
 def get_market_indices():
+    import copy
     from scanner import INDEX_CATEGORIES
-    return INDEX_CATEGORIES
+    categories = copy.deepcopy(INDEX_CATEGORIES)
+    ticks = REAL_LIVE_TICKS_CACHE.get("ticks", {})
+    if not ticks:
+        update_all_ticks_background()
+        ticks = REAL_LIVE_TICKS_CACHE.get("ticks", {})
+    
+    for cat_name, items in categories.items():
+        for item in items:
+            sym = item.get("symbol", "")
+            if sym in ticks:
+                t = ticks[sym]
+                item["base_price"] = t.get("ltp", item["base_price"])
+                item["change_pct"] = t.get("change_pct", item.get("change_pct", 0.0))
+            elif item.get("name") in ticks:
+                t = ticks[item["name"]]
+                item["base_price"] = t.get("ltp", item["base_price"])
+                item["change_pct"] = t.get("change_pct", item.get("change_pct", 0.0))
+    return categories
 
 @app.post('/api/market/refresh')
 def refresh_market_data():

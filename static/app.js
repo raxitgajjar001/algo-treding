@@ -545,26 +545,40 @@ async function fetchLiveTicks() {
     // 1. Update Ribbon
     if (ticks['NIFTY']) {
       const el = document.getElementById('ticker-nifty');
-      if (el) el.textContent = '₹' + ticks['NIFTY'].ltp.toLocaleString('en-IN') + ' (' + ticks['NIFTY'].change_pct + '%)';
+      if (el) el.textContent = '₹' + Number(ticks['NIFTY'].ltp).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' (' + ticks['NIFTY'].change_pct + '%)';
     }
     if (ticks['BANKNIFTY']) {
       const el = document.getElementById('ticker-banknifty');
-      if (el) el.textContent = '₹' + ticks['BANKNIFTY'].ltp.toLocaleString('en-IN') + ' (' + ticks['BANKNIFTY'].change_pct + '%)';
+      if (el) el.textContent = '₹' + Number(ticks['BANKNIFTY'].ltp).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' (' + ticks['BANKNIFTY'].change_pct + '%)';
     }
     if (ticks['SENSEX']) {
       const el = document.getElementById('ticker-sensex');
-      if (el) el.textContent = '₹' + ticks['SENSEX'].ltp.toLocaleString('en-IN') + ' (' + ticks['SENSEX'].change_pct + '%)';
+      if (el) el.textContent = '₹' + Number(ticks['SENSEX'].ltp).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' (' + ticks['SENSEX'].change_pct + '%)';
     }
     if (ticks['FINNIFTY']) {
       const el = document.getElementById('ticker-finnifty');
-      if (el) el.textContent = '₹' + ticks['FINNIFTY'].ltp.toLocaleString('en-IN') + ' (' + ticks['FINNIFTY'].change_pct + '%)';
+      if (el) el.textContent = '₹' + Number(ticks['FINNIFTY'].ltp).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' (' + ticks['FINNIFTY'].change_pct + '%)';
     }
     if (ticks['INDIAVIX']) {
       const el = document.getElementById('ticker-vix');
       if (el) el.textContent = ticks['INDIAVIX'].ltp + ' (' + ticks['INDIAVIX'].change_pct + '%)';
     }
 
-    // 2. Stream Active Candlestick on Chart in Real Time
+    // 2. Update all Index Category Cards in the grid
+    for (const [sym, tick] of Object.entries(ticks)) {
+      const cardPrice = document.getElementById('cat-price-' + sym);
+      const cardChg = document.getElementById('cat-chg-' + sym);
+      if (cardPrice && tick && tick.ltp !== undefined) {
+        cardPrice.textContent = '₹' + Number(tick.ltp).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      }
+      if (cardChg && tick && tick.change_pct !== undefined) {
+        const isPos = tick.change_pct >= 0;
+        cardChg.textContent = (isPos ? '+' : '') + tick.change_pct + '%';
+        cardChg.className = 'index-card-chg ' + (isPos ? 'pos' : 'neg');
+      }
+    }
+
+    // 3. Stream Active Candlestick on Chart in Real Time
     const currentTick = ticks[currentChartSymbol];
     if (currentTick && currentCandle && allCandles.length > 0) {
       const newClose = currentTick.ltp;
@@ -926,8 +940,8 @@ function renderIndexCategoryItems(catKey) {
         </div>
         <div class="index-card-subtitle">${item.symbol} • ${item.name}</div>
         <div class="index-card-body">
-          <div class="index-card-price">₹${priceFormatted}</div>
-          <div class="index-card-chg ${chgClass}">${chgText}</div>
+          <div class="index-card-price" id="cat-price-${item.symbol}">₹${priceFormatted}</div>
+          <div class="index-card-chg ${chgClass}" id="cat-chg-${item.symbol}">${chgText}</div>
         </div>
       </div>
     `;
