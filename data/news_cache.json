@@ -1,10 +1,80 @@
 [
   {
+    "id": "2ab50c7a3af94534564e68f9eabb9b92",
+    "title": "IDBI Bank shares crash 11% amid price concerns as Fairfax deal moves closer",
+    "summary": "IDBI Bank shares fell sharply as investors focused on Fairfax Financial Holdings’ reported Rs 81-per-share offer for a 60.72% controlling stake. The proposed Rs...",
+    "link": "#",
+    "published_at": "03:41 PM IST (હમણાં જ (Just Now))",
+    "published_timestamp": 1788862297.847458,
+    "sentiment": "📈 તેજી",
+    "score": 0.8,
+    "tickers": [
+      "NIFTY"
+    ],
+    "source": "ઇકોનોમિક ટાઇમ્સ લાઈવ (ET Markets)"
+  },
+  {
+    "id": "8f6783e78472a558e6eff4d1c7abc355",
+    "title": "Global Market: Eurozone bond yields hold near multi-year highs as markets await ECB decision",
+    "summary": "Eurozone bond yields remained near multi-year highs as investors assessed rising energy costs, German political uncertainty and Japan’s market volatility ahead ...",
+    "link": "#",
+    "published_at": "03:10 PM IST (32 મિનિટ પહેલાં)",
+    "published_timestamp": 1788860405.8246474,
+    "sentiment": "📈 તેજી",
+    "score": 0.8,
+    "tickers": [
+      "LT"
+    ],
+    "source": "ઇકોનોમિક ટાઇમ્સ લાઈવ (ET Markets)"
+  },
+  {
+    "id": "ee3d9869c1100c7684b676e17c1dd053",
+    "title": "Global Market | BOJ Rate Decision: Why a jumbo 50-bps hike looks unlikely in September",
+    "summary": "The BOJ is expected to raise rates by 25 basis points in September, though markets are weighing the possibility of a larger hike. Persistent inflation, a strong...",
+    "link": "#",
+    "published_at": "03:08 PM IST (34 મિનિટ પહેલાં)",
+    "published_timestamp": 1788860285.8246474,
+    "sentiment": "📈 તેજી",
+    "score": 0.8,
+    "tickers": [
+      "NIFTY"
+    ],
+    "source": "ઇકોનોમિક ટાઇમ્સ લાઈવ (ET Markets)"
+  },
+  {
+    "id": "9c2d3759f2970242e1c54b1bfb0bcad2",
+    "title": "Global Market: European shares slip as oil surge fuels inflation fears; Novartis plunges",
+    "summary": "European shares slipped as surging oil prices raised inflation concerns amid escalating Middle East tensions and threats to Gulf energy infrastructure. The STOX...",
+    "link": "#",
+    "published_at": "03:06 PM IST (36 મિનિટ પહેલાં)",
+    "published_timestamp": 1788860165.8246474,
+    "sentiment": "🔴 મંદી",
+    "score": -0.6,
+    "tickers": [
+      "NIFTY"
+    ],
+    "source": "ઇકોનોમિક ટાઇમ્સ લાઈવ (ET Markets)"
+  },
+  {
+    "id": "b792227b2eb33ba2dd8ab88a1af11cb7",
+    "title": "Global Market | China’s Trade Data: Auto, tech stocks in focus after export surge",
+    "summary": "China’s exports surged 25% year-on-year in August, supported by strong overseas demand for automobiles and high-tech goods, while the country’s trade surplus wi...",
+    "link": "#",
+    "published_at": "02:15 PM IST (1 કલાક પહેલાં)",
+    "published_timestamp": 1788857112.7784934,
+    "sentiment": "📈 તેજી",
+    "score": 0.8,
+    "tickers": [
+      "NIFTY"
+    ],
+    "source": "ઇકોનોમિક ટાઇમ્સ લાઈવ (ET Markets)"
+  },
+  {
     "id": "4dd65e397ef4ab70238165c45156d9f0",
     "title": "MF Favourite Smallcaps: 14 stocks that soared up to 220% in CY26.",
     "summary": "Several Nifty Smallcap stocks have delivered stellar returns in CY26, with 28 stocks gaining over 50% so far and five turning multibaggers. A screen of stocks h...",
     "link": "#",
-    "published_at": "01:53 PM IST (19 મિનિટ પહેલાં)",
+    "published_at": "01:53 PM IST (1 કલાક પહેલાં)",
     "published_timestamp": 1788855830.775245,
     "sentiment": "📈 તેજી",
     "score": 0.8,
@@ -18,7 +88,7 @@
     "title": "Goldman Sachs’ big warning! Oil prices could soar to $120 if attacks on shipping continue in Hormuz Strait",
     "summary": "Goldman Sachs warned Brent crude could rise to $120 a barrel if Middle East shipping disruptions intensify, while JPMorgan sees further upside with prolonged di...",
     "link": "#",
-    "published_at": "01:37 PM IST (35 મિનિટ પહેલાં)",
+    "published_at": "01:37 PM IST (2 કલાક પહેલાં)",
     "published_timestamp": 1788854853.0411496,
     "sentiment": "📈 તેજી",
     "score": 0.8,
@@ -32,78 +102,8 @@
     "title": "Brokerage Disclosures",
     "summary": "The views/recommendations mentioned in the articles, wherever applicable, are those of the respective SEBI-registered Research Analyst/brokerage and have been r...",
     "link": "#",
-    "published_at": "01:35 PM IST (37 મિનિટ પહેલાં)",
+    "published_at": "01:35 PM IST (2 કલાક પહેલાં)",
     "published_timestamp": 1788854733.0411496,
-    "sentiment": "📈 તેજી",
-    "score": 0.8,
-    "tickers": [
-      "NIFTY"
-    ],
-    "source": "ઇકોનોમિક ટાઇમ્સ લાઈવ (ET Markets)"
-  },
-  {
-    "id": "181989f7dcc809e445914d3710d4127f",
-    "title": "Global Market: Eurozone investor sentiment hits four-year high in September",
-    "summary": "Eurozone investor sentiment rose to a more than four-year high in September, with the Sentix index climbing to 5.1 as both current conditions and economic expec...",
-    "link": "#",
-    "published_at": "01:33 PM IST (39 મિનિટ પહેલાં)",
-    "published_timestamp": 1788854613.0411496,
-    "sentiment": "📈 તેજી",
-    "score": 0.8,
-    "tickers": [
-      "NIFTY"
-    ],
-    "source": "ઇકોનોમિક ટાઇમ્સ લાઈવ (ET Markets)"
-  },
-  {
-    "id": "c18c022287ff32b45a4e1a1ab2ea1a36",
-    "title": "Global Market: Yen rally threatens to unravel lucrative carry trade ahead of BOJ rate decision",
-    "summary": "The Japanese yen has surged ahead of an expected Bank of Japan rate hike next week, disrupting the long-standing yen carry trade and prompting investors to unwi...",
-    "link": "#",
-    "published_at": "12:59 PM IST (1 કલાક પહેલાં)",
-    "published_timestamp": 1788852575.7249732,
-    "sentiment": "📈 તેજી",
-    "score": 0.8,
-    "tickers": [
-      "NIFTY"
-    ],
-    "source": "ઇકોનોમિક ટાઇમ્સ લાઈવ (ET Markets)"
-  },
-  {
-    "id": "e28dbb02b7013c1d754a619c4e766cf8",
-    "title": "PVR Inox’s Rs 300-કરોડ buyback opens on Sept 10: Check buyback price, key dates, entitlement ratio",
-    "summary": "PVR Inox’s Rs 300-crore share buyback opens September 10 and closes September 17, offering eligible shareholders Rs 1,450 per share, over 25% above the market p...",
-    "link": "#",
-    "published_at": "12:49 PM IST (1 કલાક પહેલાં)",
-    "published_timestamp": 1788851988.5181766,
-    "sentiment": "📈 તેજી",
-    "score": 0.8,
-    "tickers": [
-      "NIFTY"
-    ],
-    "source": "ઇકોનોમિક ટાઇમ્સ લાઈવ (ET Markets)"
-  },
-  {
-    "id": "3a4d1cac2e752a4685f2085f78563668",
-    "title": "Copper રેકોર્ડ હાઈ સ્તરે, UltraTech’s Ultravolt on the offensive: A double whammy for cable makers in FY27?",
-    "summary": "Copper prices have soared to unprecedented levels, creating ripple effects on manufacturing expenses worldwide. UltraTech's Ultravolt is making bold strides int...",
-    "link": "#",
-    "published_at": "12:32 PM IST (1 કલાક પહેલાં)",
-    "published_timestamp": 1788850934.88625,
-    "sentiment": "📈 તેજી",
-    "score": 0.8,
-    "tickers": [
-      "LT"
-    ],
-    "source": "ઇકોનોમિક ટાઇમ્સ લાઈવ (ET Markets)"
-  },
-  {
-    "id": "965186ec98433113b5e37ae179154baa",
-    "title": "FCNR(B) windfall for banks explained: Who got highest inflows and what it means for investors",
-    "summary": "FCNR(B) deposits offer banks a cheaper and balance-sheet-efficient source of funding, but their finite tenor and initial deployment challenges could pressure ma...",
-    "link": "#",
-    "published_at": "12:30 PM IST (1 કલાક પહેલાં)",
-    "published_timestamp": 1788850814.88625,
     "sentiment": "📈 તેજી",
     "score": 0.8,
     "tickers": [
@@ -116,7 +116,7 @@
     "title": "નિફ્ટી 50 માં મજબૂત રિકવરી: બેંકિંગ અને આઈટી શેરોમાં વિદેશી સંસ્થાકીય રોકાણકારો (FII) ની જોરદાર ખરીદી",
     "summary": "નિફ્ટી 50 અને બેન્ક નિફ્ટીમાં આજે નીચલા સ્તરેથી શાનદાર બાઉન્સબેક જોવા મળ્યું. HDFC Bank, ICICI Bank અને TCS માં મોટા પાયે સંસ્થાકીય રોકાણ વધતાં બજારમાં પોઝિટિવ સેન્ટિમેન્ટ બન્યું છે.",
     "link": "#",
-    "published_at": "04:54 PM IST (21 કલાક પહેલાં)",
+    "published_at": "04:54 PM IST (22 કલાક પહેલાં)",
     "published_timestamp": 1788780276.6190295,
     "sentiment": "🚀 ભારે તેજી",
     "score": 0.88,
@@ -133,7 +133,7 @@
     "title": "ટાટા મોટર્સ (Tata Motors): ઇલેક્ટ્રિક વાહનો (EV) માટે મોટો કોમર્શિયલ ઓર્ડર મળ્યો, શેર 3% ઉછળ્યો",
     "summary": "ટાટા મોટર્સને સરકારી અને ખાનગી ક્ષેત્ર તરફથી 5,000 થી વધુ કોમર્શિયલ ઈવી બસો અને ફ્લીટ વાહનો સપ્લાય કરવાનો મોટો ઓર્ડર મળ્યો છે. અગ્રણી બ્રોકરેજ હાઉસે ટાર્ગેટ વધાર્યો છે.",
     "link": "#",
-    "published_at": "04:52 PM IST (21 કલાક પહેલાં)",
+    "published_at": "04:52 PM IST (22 કલાક પહેલાં)",
     "published_timestamp": 1788780156.6190295,
     "sentiment": "🚀 ભારે તેજી",
     "score": 0.92,
@@ -147,7 +147,7 @@
     "title": "રિલાયન્સ ઇન્ડસ્ટ્રીઝ (RIL): ગ્રીન એનર્જી અને સોલાર ગીગાવૉટ પ્લાન્ટમાં વ્યાવસાયિક ઉત્પાદન શરૂ",
     "summary": "રિલાયન્સ ઇન્ડસ્ટ્રીઝની નવી રિન્યુએબલ એનર્જી શાખાએ પાયલોટ કમર્શિયલ સપ્લાય સફળતાપૂર્વક શરૂ કર્યો. મોટા વોલ્યુમ સાથે શેરમાં સતત એક્યુમ્યુલેશન જોવા મળી રહ્યું છે.",
     "link": "#",
-    "published_at": "04:50 PM IST (21 કલાક પહેલાં)",
+    "published_at": "04:50 PM IST (22 કલાક પહેલાં)",
     "published_timestamp": 1788780036.6190295,
     "sentiment": "📈 તેજી",
     "score": 0.75,
@@ -161,7 +161,7 @@
     "title": "સ્ટેટ બેંક ઓફ ઇન્ડિયા (SBI): ક્રેડિટ ગ્રોથ 15.2% વધ્યો, એસેટ ક્વોલિટીમાં જોરદાર સુધારો",
     "summary": "દેશની સૌથી મોટી જાહેર ક્ષેત્રની બેંક SBI એ કોર્પોરેટ અને રિટેલ ધિરાણમાં બજારના અંદાજ કરતાં બહેતર પરિણામ આપ્યા છે. ગ્રોસ એનપીએ ઘટીને વર્ષના નીચલા સ્તરે પહોંચી ગઈ છે.",
     "link": "#",
-    "published_at": "04:48 PM IST (21 કલાક પહેલાં)",
+    "published_at": "04:48 PM IST (22 કલાક પહેલાં)",
     "published_timestamp": 1788779916.6190295,
     "sentiment": "📈 તેજી",
     "score": 0.82,
@@ -176,7 +176,7 @@
     "title": "આઈસીઆઈસીઆઈ બેંક (ICICI Bank): નેટ ઇન્ટરેસ્ટ માર્જિનમાં મજબૂતી, વિદેશી ફંડ્સનું મોટું બાઇંગ",
     "summary": "આઈસીઆઈસીઆઈ બેંકના શેર ₹1,420 ના સ્તરની ઉપર નવી ઓલ-ટાઇમ હાઈ તરફ આગળ વધી રહ્યા છે. વૈશ્વિક એનાલિસ્ટ્સે શેર માટે નવો ટાર્ગેટ જાહેર કર્યો છે.",
     "link": "#",
-    "published_at": "04:46 PM IST (21 કલાક પહેલાં)",
+    "published_at": "04:46 PM IST (22 કલાક પહેલાં)",
     "published_timestamp": 1788779796.6190295,
     "sentiment": "🚀 ભારે તેજી",
     "score": 0.86,
@@ -191,7 +191,7 @@
     "title": "ટીસીએસ અને ઇન્ફોસિસ: યુએસ અને યુરોપિયન ક્લાયન્ટ્સ પાસેથી મલ્ટિ-મિલિયન ડોલર AI ક્લાઉડ ડીલ સંપન્ન",
     "summary": "ભારતીય આઈટી જાયન્ટ્સ TCS અને Infosys ને જનરેટિવ AI અને ક્લાઉડ ટ્રાન્સફોર્મેશન માટે મોટા વૈશ્વિક પ્રોજેક્ટ મળ્યા. આઈટી ઇન્ડેક્સમાં શોર્ટ કવરિંગની જોરદાર તેજી.",
     "link": "#",
-    "published_at": "04:44 PM IST (21 કલાક પહેલાં)",
+    "published_at": "04:44 PM IST (22 કલાક પહેલાં)",
     "published_timestamp": 1788779676.6190295,
     "sentiment": "📈 તેજી",
     "score": 0.78,
@@ -206,7 +206,7 @@
     "title": "ભારતી એરટેલ (Bharti Airtel): 5G કવરેજમાં મોટો સીમાચિહ્ન, એવરેજ રેવન્યુ (ARPU) વધીને ₹211 થઈ",
     "summary": "ટેલિકોમ ક્ષેત્રે ભારતી એરટેલનું પ્રદર્શન મજબૂત રહ્યું છે. પ્રતિ ગ્રાહક સરેરાશ આવક (ARPU) વધવાથી કંપનીના નફાકારકતા માર્જિનમાં મોટો વધારો થવાની ધારણા છે.",
     "link": "#",
-    "published_at": "04:42 PM IST (21 કલાક પહેલાં)",
+    "published_at": "04:42 PM IST (22 કલાક પહેલાં)",
     "published_timestamp": 1788779556.6190295,
     "sentiment": "📈 તેજી",
     "score": 0.74,
@@ -220,7 +220,7 @@
     "title": "લાર્સન એન્ડ ટુબ્રો (L&T): મિડલ ઈસ્ટ અને ડોમેસ્ટિક ઇન્ફ્રાસ્ટ્રક્ચરમાં ₹4,500 કરોડના નવા ઓર્ડર મળ્યા",
     "summary": "એલ એન્ડ ટીની ઓર્ડર બુક ઓલ-ટાઇમ રેકોર્ડ સ્તરે પહોંચી. ઇન્ફ્રાસ્ટ્રક્ચર અને પાવર ટ્રાન્સમિશન ડિવિઝનમાં ઝડપી પ્રોજેક્ટ એક્ઝિક્યુશનથી શેર ગ્રીન ઝોનમાં.",
     "link": "#",
-    "published_at": "04:40 PM IST (21 કલાક પહેલાં)",
+    "published_at": "04:40 PM IST (23 કલાક પહેલાં)",
     "published_timestamp": 1788779436.6190295,
     "sentiment": "🚀 ભારે તેજી",
     "score": 0.85,
@@ -234,7 +234,7 @@
     "title": "આરબીઆઈ (RBI) મોનેટરી પોલિસી: ફુગાવો અંકુશમાં, જીડીપી ગ્રોથ 7.2% રહેવાનો અંદાજ",
     "summary": "રિઝર્વ બેંક ઓફ ઇન્ડિયાની મોનેટરી પોલિસી કમિટીએ ભારતીય અર્થતંત્રના મજબૂત મૂળિયાં દર્શાવ્યા છે. વ્યાજ દરો સ્થિર રહેવાની આશાએ રોકાણકારોમાં ઉત્સાહનો માહોલ છે.",
     "link": "#",
-    "published_at": "04:38 PM IST (21 કલાક પહેલાં)",
+    "published_at": "04:38 PM IST (23 કલાક પહેલાં)",
     "published_timestamp": 1788779316.6190295,
     "sentiment": "📈 તેજી",
     "score": 0.7,
@@ -249,7 +249,7 @@
     "title": "મારુતિ સુઝુકી (Maruti Suzuki): ફેસ્ટિવ સીઝન માટે રેકોર્ડ બુકિંગ, હાઇબ્રિડ કારની માંગમાં બમણો ઉછાળો",
     "summary": "ઓટોમોબાઇલ ક્ષેત્રે મારુતિ સુઝુકીના વેચાણમાં વધારો નોંધાયો છે. સપ્લાય ચેઈન સરળ થતાં ડિલિવરીનો સમય ઘટ્યો છે અને નવા મોડલ્સનું બુકિંગ સતત વધી રહ્યું છે.",
     "link": "#",
-    "published_at": "04:36 PM IST (21 કલાક પહેલાં)",
+    "published_at": "04:36 PM IST (23 કલાક પહેલાં)",
     "published_timestamp": 1788779196.6190295,
     "sentiment": "📈 તેજી",
     "score": 0.72,

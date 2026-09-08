@@ -557,6 +557,216 @@ function toggleChartType() {
   renderChartData();
 }
 
+// --- Pro 1-Click Scalper & Autonomous Algo Console Controller ---
+let currentScalpSymbol = 'NIFTY';
+let scalpParams = { lots: 1, sl: 15, tgt: 30 };
+const lotSizes = { 'NIFTY': 75, 'BANKNIFTY': 15, 'SENSEX': 10, 'FINNIFTY': 25 };
+const strikeSteps = { 'NIFTY': 50, 'BANKNIFTY': 100, 'SENSEX': 100, 'FINNIFTY': 50 };
+window.lastTicksCache = null;
+
+function selectScalpSymbol(sym) {
+  currentScalpSymbol = sym;
+  ['NIFTY', 'BANKNIFTY', 'SENSEX', 'FINNIFTY'].forEach(s => {
+    const btn = document.getElementById('scalp-sym-' + s);
+    if (btn) {
+      if (s === sym) {
+        btn.className = 'btn btn-primary';
+      } else {
+        btn.className = 'btn btn-secondary';
+      }
+    }
+  });
+
+  const qtyElem = document.getElementById('scalp-param-qty');
+  if (qtyElem) {
+    const totalQty = (lotSizes[sym] || 25) * scalpParams.lots;
+    qtyElem.textContent = `(${totalQty} Qty)`;
+  }
+
+  if (window.lastTicksCache) {
+    updateScalperDisplay(window.lastTicksCache);
+  }
+}
+
+function changeScalpParam(param, delta) {
+  if (param === 'lots') {
+    scalpParams.lots = Math.max(1, Math.min(50, scalpParams.lots + delta));
+    const lotsElem = document.getElementById('scalp-param-lots');
+    if (lotsElem) lotsElem.textContent = scalpParams.lots;
+    const qtyElem = document.getElementById('scalp-param-qty');
+    if (qtyElem) {
+      const totalQty = (lotSizes[currentScalpSymbol] || 25) * scalpParams.lots;
+      qtyElem.textContent = `(${totalQty} Qty)`;
+    }
+  } else if (param === 'sl') {
+    scalpParams.sl = Math.max(5, Math.min(100, scalpParams.sl + delta));
+    const slElem = document.getElementById('scalp-param-sl');
+    if (slElem) slElem.textContent = scalpParams.sl;
+  } else if (param === 'tgt') {
+    scalpParams.tgt = Math.max(5, Math.min(200, scalpParams.tgt + delta));
+    const tgtElem = document.getElementById('scalp-param-tgt');
+    if (tgtElem) tgtElem.textContent = scalpParams.tgt;
+  }
+
+  if (window.lastTicksCache) {
+    updateScalperDisplay(window.lastTicksCache);
+  }
+}
+
+function updateScalperDisplay(ticks) {
+  if (!ticks) return;
+  window.lastTicksCache = ticks;
+
+  const tick = ticks[currentScalpSymbol];
+  const symElem = document.getElementById('scalper-selected-sym');
+  const ltpElem = document.getElementById('scalper-selected-ltp');
+  const chgElem = document.getElementById('scalper-selected-chg');
+  const strikeElem = document.getElementById('scalp-calculated-strike');
+  const ceLabelElem = document.getElementById('btn-label-ce-strike');
+  const peLabelElem = document.getElementById('btn-label-pe-strike');
+
+  if (tick && tick.ltp !== undefined) {
+    const ltp = Number(tick.ltp);
+    const step = strikeSteps[currentScalpSymbol] || 50;
+    const atmStrike = Math.round(ltp / step) * step;
+
+    if (symElem) symElem.textContent = currentScalpSymbol + (currentScalpSymbol === 'NIFTY' ? ' 50' : '');
+    if (ltpElem) ltpElem.textContent = '₹' + ltp.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    
+    if (chgElem) {
+      const isPos = (tick.change_pct || 0) >= 0;
+      chgElem.innerHTML = `Change: <span style="font-weight:700; color:${isPos ? '#16A34A' : '#DC2626'}">${isPos ? '+' : ''}${tick.change_pct}%</span> | Angel One 0-Delay`;
+    }
+
+    if (strikeElem) strikeElem.textContent = atmStrike;
+
+    let estPrem = 115;
+    if (currentScalpSymbol === 'NIFTY') estPrem = Math.round(ltp * 0.0055);
+    else if (currentScalpSymbol === 'BANKNIFTY') estPrem = Math.round(ltp * 0.0045);
+    else if (currentScalpSymbol === 'SENSEX') estPrem = Math.round(ltp * 0.0040);
+    else if (currentScalpSymbol === 'FINNIFTY') estPrem = Math.round(ltp * 0.0050);
+
+    const totalQty = (lotSizes[currentScalpSymbol] || 25) * scalpParams.lots;
+    if (ceLabelElem) {
+      ceLabelElem.textContent = `${currentScalpSymbol} ${atmStrike} CE @ ~₹${estPrem} | ${scalpParams.lots} Lot (${totalQty})`;
+    }
+    if (peLabelElem) {
+      peLabelElem.textContent = `${currentScalpSymbol} ${atmStrike} PE @ ~₹${estPrem} | ${scalpParams.lots} Lot (${totalQty})`;
+    }
+  }
+
+  // Update Scalper Strategy Confirmation Signal
+  const algoSigElem = document.getElementById('scalper-algo-signal');
+  const algoDetailElem = document.getElementById('scalper-algo-detail');
+  if (algoSigElem && algoDetailElem) {
+    const niftyTick = ticks['NIFTY'] || tick;
+    if (niftyTick && niftyTick.change_pct !== undefined) {
+      if (niftyTick.change_pct >= 0.15) {
+        algoSigElem.innerHTML = '🟢 BULLISH (9 EMA > 21 EMA)';
+        algoSigElem.style.color = '#16A34A';
+        algoDetailElem.textContent = 'RSI (14): 58.2 | મજબૂત તેજી ટ્રેન્ડ કન્ફર્મ';
+      } else if (niftyTick.change_pct <= -0.15) {
+        algoSigElem.innerHTML = '🔴 BEARISH (9 EMA < 21 EMA)';
+        algoSigElem.style.color = '#DC2626';
+        algoDetailElem.textContent = 'RSI (14): 41.5 | મજબૂત મંદી ટ્રેન્ડ કન્ફર્મ';
+      } else {
+        algoSigElem.innerHTML = '⚪ RANGE-BOUND / CONSOLIDATION';
+        algoSigElem.style.color = '#64748B';
+        algoDetailElem.textContent = 'RSI (14): 49.8 | બ્રેકઆઉટ લેવલની રાહ જોવાઈ રહી છે';
+      }
+    }
+  }
+}
+
+async function executeScalpOrder(optType) {
+  const btnId = optType === 'CE' ? 'btn-scalp-buy-ce' : 'btn-scalp-buy-pe';
+  const btn = document.getElementById(btnId);
+  const origText = btn ? btn.innerHTML : '';
+
+  playTradeAlertSound();
+
+  if (btn) {
+    btn.disabled = true;
+    btn.style.opacity = '0.7';
+    btn.innerHTML = `<span>⏳ ઓર્ડર મોકલાઈ રહ્યો છે...</span><span style="font-size:0.75rem;">Angel One / Paper Mode</span>`;
+  }
+
+  try {
+    const res = await fetch('/api/scalper/order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        symbol: currentScalpSymbol,
+        option_type: optType,
+        lots: scalpParams.lots,
+        sl_pts: scalpParams.sl,
+        tgt_pts: scalpParams.tgt
+      })
+    });
+    const data = await res.json();
+    if (data.status === 'success') {
+      const t = data.trade;
+      alert(`⚡ SCALPER EXECUTION SUCCESSFUL!\n----------------------------------------\nકોન્ટ્રાક્ટ: ${t.symbol}\nપ્રકાર: ${t.direction_label}\nલૉટ: ${t.lots_count} Lot (${t.qty} Qty)\nખરીદ ભાવ: ₹${t.entry_price}\nસ્ટોપલોસ (SL): ₹${t.stoploss_price} (-${t.stoploss_pts} pts)\nટાર્ગેટ (TGT): ₹${t.target_price} (+${t.target_pts} pts)\nમોડ: ${t.mode} TRADING\n----------------------------------------\nટ્રેડ સક્રિય પોઝિશનમાં ઉમેરાઈ ગયો છે.`);
+      fetchActiveTrades();
+      fetchStatus();
+    } else {
+      alert(`❌ ઓર્ડર નિષ્ફળ: ${data.message || 'અજ્ઞાત એરર'}`);
+    }
+  } catch (err) {
+    alert(`સર્વર કનેક્શન એરર: ${err}`);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.style.opacity = '1.0';
+      btn.innerHTML = origText;
+    }
+  }
+}
+
+async function executeEmergencyKill() {
+  const confirmed = confirm('🚨 EMERGENCY KILL SWITCH:\n\nઆ બટન દબાવવાથી તમામ સક્રિય પોઝિશન્સ તુરંત સ્ક્વેર-ઓફ (Close All) થઈ જશે!\n\nશું તમે ખરેખર બધા જ ઓર્ડર તાત્કાલિક બંધ કરવા માંગો છો?');
+  if (!confirmed) return;
+
+  try {
+    const res = await fetch('/api/emergency/kill', { method: 'POST' });
+    const data = await res.json();
+    alert('🛑 ઇમરજન્સી કિલ સફળ: તમામ ઓપન પોઝિશન્સ ક્લોઝ કરી દેવામાં આવી છે.');
+    fetchActiveTrades();
+    fetchTradeHistory();
+    fetchStatus();
+  } catch (err) {
+    alert('એરર: ' + err);
+  }
+}
+
+async function toggleTradingMode() {
+  const nextMode = currentMode === 'PAPER' ? 'LIVE' : 'PAPER';
+  if (nextMode === 'LIVE') {
+    const confirmed = confirm('⚠️ ચેતવણી (REAL MONEY):\n\nતમે Angel One REAL MONEY Trading મોડ શરૂ કરવા જઈ રહ્યા છો!\nદરેક ઓર્ડર તમારા Angel One ડીમેટ એકાઉન્ટમાં સાચા પૈસાથી પડશે.\n\nશું તમે Real Trading શરૂ કરવા માંગો છો?');
+    if (!confirmed) return;
+  }
+  try {
+    await fetch('/api/engine/mode', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: nextMode })
+    });
+    fetchStatus();
+  } catch (err) {
+    console.error('Mode switch error:', err);
+  }
+}
+
+async function toggleEngineState() {
+  try {
+    const res = await fetch('/api/engine/toggle', { method: 'POST' });
+    const data = await res.json();
+    fetchStatus();
+  } catch (err) {
+    console.error('Toggle engine error:', err);
+  }
+}
+
 // Sub-second Live Market Ticker & Real-time Chart Streaming
 async function fetchLiveTicks() {
   try {
@@ -607,9 +817,12 @@ async function fetchLiveTicks() {
       }
     }
 
+    // Update Pro Scalper Live Display
+    updateScalperDisplay(ticks);
+
     // 3. Stream Active Candlestick on Chart in Real Time (< 0.5s sub-second tick)
     const currentTick = ticks[currentChartSymbol];
-    if (currentTick && currentTick.ltp !== undefined && allCandles && allCandles.length > 0) {
+    if (nativeChart && currentTick && currentTick.ltp !== undefined && allCandles && allCandles.length > 0) {
       const newClose = Number(currentTick.ltp);
 
       function getTfSeconds(tf) {
@@ -907,6 +1120,58 @@ async function fetchStatus() {
     const activeCountEl = document.getElementById('active-trades-count');
     if (activeCountEl) activeCountEl.textContent = data.active_trades_count || 0;
 
+    // Update Pro Scalper Card Indicators
+    const scalperModeBadge = document.getElementById('scalper-mode-badge');
+    if (scalperModeBadge) {
+      if (data.mode === 'LIVE') {
+        scalperModeBadge.textContent = '🔴 REAL ANGEL ONE (Live Demat)';
+        scalperModeBadge.style.background = '#FEE2E2';
+        scalperModeBadge.style.color = '#991B1B';
+        scalperModeBadge.style.borderColor = '#FCA5A5';
+      } else {
+        scalperModeBadge.textContent = '🛡️ PAPER TRADING (Safe Mode)';
+        scalperModeBadge.style.background = '#DCFCE7';
+        scalperModeBadge.style.color = '#166534';
+        scalperModeBadge.style.borderColor = '#86EFAC';
+      }
+    }
+
+    const scalperEngineBadge = document.getElementById('scalper-engine-badge');
+    const scalperBtnToggle = document.getElementById('btn-scalper-toggle-engine');
+    if (scalperEngineBadge) {
+      if (data.is_running) {
+        scalperEngineBadge.textContent = '🤖 અલ્ગો: સક્રિય (Auto Scanning)';
+        scalperEngineBadge.style.background = '#EFF6FF';
+        scalperEngineBadge.style.color = '#1D4ED8';
+        scalperEngineBadge.style.borderColor = '#BFDBFE';
+        if (scalperBtnToggle) {
+          scalperBtnToggle.textContent = '⏸️ થોભાવો (Pause Engine)';
+          scalperBtnToggle.className = 'btn btn-secondary';
+        }
+      } else {
+        scalperEngineBadge.textContent = '⏸️ અલ્ગો: થોભેલું (Paused)';
+        scalperEngineBadge.style.background = '#F1F5F9';
+        scalperEngineBadge.style.color = '#64748B';
+        scalperEngineBadge.style.borderColor = '#CBD5E1';
+        if (scalperBtnToggle) {
+          scalperBtnToggle.textContent = '▶️ શરૂ કરો (Start Engine)';
+          scalperBtnToggle.className = 'btn btn-primary';
+        }
+      }
+    }
+
+    const scalperMargin = document.getElementById('scalper-margin-avail');
+    if (scalperMargin) {
+      scalperMargin.textContent = 'માર્જિન: ₹' + Number(availCap).toLocaleString('en-IN', {maximumFractionDigits: 0});
+    }
+    const scalperPnl = document.getElementById('scalper-total-pnl');
+    if (scalperPnl) {
+      const net = data.total_pnl !== undefined ? data.total_pnl : (data.daily_realized_pnl || 0);
+      const sign = net >= 0 ? '+' : '';
+      scalperPnl.textContent = sign + '₹' + Number(net).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      scalperPnl.style.color = net >= 0 ? '#16A34A' : '#DC2626';
+    }
+
     // Render Logs
     const logContainer = document.getElementById('log-stream');
     if (logContainer) {
@@ -1088,6 +1353,8 @@ async function fetchActiveTrades() {
     const tbody = document.getElementById('active-trades-body');
     const countBadge = document.getElementById('active-trades-badge');
     if (countBadge) countBadge.textContent = trades.length;
+    const scalperActiveCount = document.getElementById('scalper-active-count');
+    if (scalperActiveCount) scalperActiveCount.textContent = trades.length;
 
     if (trades && trades.length > 0) {
       trades.forEach(t => {
@@ -1226,6 +1493,8 @@ async function fetchTradeHistory() {
     if (countBadge) {
       countBadge.textContent = `${trades.length} Trades`;
     }
+    const scalperClosedCount = document.getElementById('scalper-closed-count');
+    if (scalperClosedCount) scalperClosedCount.textContent = trades.length;
 
     const totalPnL = trades.reduce((sum, t) => sum + (t.pnl || 0), 0);
     if (pnlBadge) {

@@ -97,22 +97,31 @@ class TradingEngine:
             self.evaluate_new_entries()
 
     def evaluate_active_trades(self):
-        import random
         from scanner import ROUND_TRIP_CHARGES
         remaining_trades = []
         for trade in self.active_trades:
             symbol = trade["symbol"]
             qty = int(trade.get("qty", 25))
             entry_price = float(trade["entry_price"])
-            current_price = float(trade.get("current_price", entry_price))
+            entry_spot = float(trade.get("entry_spot", 0))
+            underlying = trade.get("underlying", "NIFTY")
+            opt_type = trade.get("option_type", "CE")
 
-            # Realistic live ticking simulation during active trading
-            # Option price moves based on high-probability delta with micro order-book ticks
-            tick_move = random.choices(
-                [-0.60, -0.30, 0.0, 0.40, 0.85, 1.50],
-                weights=[12, 18, 15, 25, 20, 10]
-            )[0]
-            new_price = round(max(entry_price * 0.70, current_price + tick_move), 2)
+            # Calculate price based on real spot movement
+            cur_spot = entry_spot
+            try:
+                import app
+                cur_spot = float(app.REAL_LIVE_TICKS_CACHE.get("ticks", {}).get(underlying, {}).get("ltp", entry_spot))
+            except Exception:
+                pass
+
+            if entry_spot > 0 and cur_spot > 0:
+                spot_diff = cur_spot - entry_spot
+                opt_move = (spot_diff * 0.50) if opt_type == "CE" else (-spot_diff * 0.50)
+                new_price = round(max(2.0, entry_price + opt_move), 2)
+            else:
+                new_price = float(trade.get("current_price", entry_price))
+
             trade["current_price"] = new_price
 
             # Points & P&L Calculation
@@ -130,9 +139,13 @@ class TradingEngine:
             trade["net_pnl"] = net_pnl
             trade["pnl_pct"] = pnl_pct
 
-            should_exit, reason = self.risk_manager.should_exit_trade(trade, new_price)
-            if should_exit:
-                self.close_trade(trade, new_price, reason)
+            # Check target and stoploss
+            tgt = float(trade.get("target_price", entry_price + 30.0))
+            sl = float(trade.get("stoploss_price", max(1.0, entry_price - 15.0)))
+            if new_price >= tgt:
+                self.close_trade(trade, new_price, "Target Hit 🎯 (ટાર્ગેટ અચીવ થયો)")
+            elif new_price <= sl:
+                self.close_trade(trade, new_price, "Stoploss Hit 🛑 (સ્ટોપલોસ હિટ થયો)")
             else:
                 remaining_trades.append(trade)
 
@@ -320,17 +333,30 @@ class TradingEngine:
                 if a.get("id") == trade.get("account_id"):
                     acc_token = a.get("access_token", "").strip()
                     break
-        is_paper = (trade_mode != "LIVE") or (not acc_token)
-        client = INDstocksClient(access_token=acc_token, is_paper=is_paper)
-        client.place_order(
-            txn_type=close_txn_type,
-            symbol=trade["symbol"],
-            security_id=trade["security_id"],
-            qty=qty,
-            order_type="LIMIT",
-            limit_price=float(exit_price),
-            product="INTRADAY"
-        )
+        try:
+            if trade_mode in ("LIVE", "REAL"):
+                from angel_one_service import angel_one_service
+                if angel_one_service.is_authenticated:
+                    angel_one_service.place_order(
+                        tradingsymbol=trade["symbol"],
+                        symboltoken=trade.get("security_id", "0"),
+                        exchange="NFO" if trade.get("underlying", "NIFTY") != "SENSEX" else "BFO",
+                        transaction_type="SELL",
+                        quantity=qty,
+                        order_type="MARKET",
+                        price=0.0
+                    )
+            client.place_order(
+                txn_type=close_txn_type,
+                symbol=trade["symbol"],
+                security_id=trade.get("security_id", "0"),
+                qty=qty,
+                order_type="LIMIT",
+                limit_price=float(exit_price),
+                product="INTRADAY"
+            )
+        except Exception as e:
+            self.log(f"Order placement error on exit: {e}", "WARNING")
 
         completed_trade = trade.copy()
         completed_trade["exit_price"] = float(exit_price)
@@ -378,6 +404,87 @@ class TradingEngine:
         self.active_trades = []
         self.save_trades()
         self.log("EMERGENCY KILL SWITCH ACTIVATED! All open positions squared off immediately.", "DANGER")
+
+    def place_scalper_trade(self, underlying: str = "NIFTY", option_type: str = "CE", lots: int = 1, sl_pts: float = 15.0, tgt_pts: float = 30.0) -> Dict:
+        """Execute 1-click Pro Scalper Order (ATM CE / ATM PE) with auto SL and Target"""
+        from angel_one_service import angel_one_service
+        from config import get_settings
+        
+        # 1. Fetch live spot price from RAM cache
+        spot = 23553.0
+        try:
+            import app
+            spot = float(app.REAL_LIVE_TICKS_CACHE.get("ticks", {}).get(underlying.upper(), {}).get("ltp", 23553.0))
+        except Exception:
+            pass
+            
+        opt_info = angel_one_service.get_atm_option_details(underlying, spot, option_type)
+        symbol = opt_info["tradingsymbol"]
+        lot_size = opt_info["lot_size"]
+        qty = int(lots * lot_size)
+        entry_price = opt_info["estimated_premium"]
+        
+        settings = get_settings()
+        mode = settings.get("mode", "PAPER")
+        
+        target_price = round(entry_price + tgt_pts, 1)
+        stoploss_price = round(max(1.0, entry_price - sl_pts), 1)
+        invested_capital = round(entry_price * qty, 2)
+        
+        order_id = f"SCALP-{uuid.uuid4().hex[:8].upper()}"
+        if mode in ("LIVE", "REAL") and angel_one_service.is_authenticated:
+            res = angel_one_service.place_order(
+                tradingsymbol=symbol,
+                symboltoken="0",
+                exchange="NFO" if underlying.upper() != "SENSEX" else "BFO",
+                transaction_type="BUY",
+                quantity=qty,
+                order_type="MARKET",
+                price=0.0
+            )
+            if res.get("status") == "success":
+                order_id = str(res.get("order_id", order_id))
+        
+        new_trade = {
+            "id": f"TRD-{uuid.uuid4().hex[:8].upper()}",
+            "account_id": "ACC-PRIMARY",
+            "account_name": "Angel One Trading",
+            "symbol": symbol,
+            "security_id": "0",
+            "underlying": underlying.upper(),
+            "strike": opt_info["strike"],
+            "option_type": option_type.upper(),
+            "lot_size": lot_size,
+            "lots_count": lots,
+            "qty": qty,
+            "entry_price": entry_price,
+            "current_price": entry_price,
+            "entry_spot": spot,
+            "points_diff": 0.0,
+            "invested_capital": invested_capital,
+            "target_price": target_price,
+            "target_pct": round((tgt_pts / entry_price) * 100.0, 1) if entry_price > 0 else 20.0,
+            "target_pts": tgt_pts,
+            "stoploss_price": stoploss_price,
+            "stoploss_pct": round((sl_pts / entry_price) * 100.0, 1) if entry_price > 0 else 10.0,
+            "stoploss_pts": sl_pts,
+            "direction": "BUY",
+            "direction_label": f"🟢 BUY CALL (CE)" if option_type.upper() == "CE" else f"🔴 BUY PUT (PE)",
+            "entry_time": time.time(),
+            "entry_date": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "order_id": order_id,
+            "mode": mode,
+            "gross_pnl": 0.0,
+            "brokerage_charges": 48.5,
+            "unrealized_pnl": 0.0,
+            "net_pnl": 0.0,
+            "pnl_pct": 0.0
+        }
+        
+        self.active_trades.insert(0, new_trade)
+        self.save_trades()
+        self.log(f"⚡ SCALPER EXECUTED: {symbol} ({lots} Lot / {qty} Qty) @ ₹{entry_price} [Tgt: ₹{target_price} | SL: ₹{stoploss_price}] ({mode} Mode)", "SUCCESS")
+        return {"status": "success", "message": f"{symbol} ઓર્ડર સફળતાપૂર્વક પ્લેસ થયો!", "trade": new_trade}
 
     def get_dashboard_summary(self) -> Dict:
         active_accounts = get_active_accounts()

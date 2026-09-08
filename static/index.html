@@ -217,77 +217,137 @@
   </section>
 
   <!-- Live Interactive Chart Section -->
-    <!-- 100% Native High-Performance Indian Candlestick Chart -->
-  <section class="panel chart-panel" style="margin-bottom: 20px; padding: 16px; background: #FFFFFF;">
-    <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
-      <div class="panel-title" style="font-size: 1.05rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-        📈 લાઈવ કેન્ડલસ્ટિક ચાર્ટ (Live Candlestick Chart)
-        <span id="current-chart-symbol" style="font-size: 0.85rem; background: #DCFCE7; color: #15803D; padding: 3px 12px; border-radius: 12px; font-weight: 800; border: 1px solid #86EFAC;">🇮🇳 NIFTY 50</span>
-        <span id="current-chart-ltp" style="font-size: 0.95rem; font-weight: 800; color: #0F172A;">₹23,779.15</span>
-        <span id="rsi-indicator-badge" style="font-size: 0.78rem; font-weight: 700; background: #FAF5FF; color: #7E22CE; padding: 3px 10px; border-radius: 6px; border: 1px solid #D8B4FE; display: none;">RSI (14): --</span>
+  <!-- Pro High-Speed Scalper & Autonomous Algo Command Center -->
+  <section class="panel scalper-panel" style="margin-bottom: 20px; padding: 18px 20px; background: #FFFFFF; border-radius: 12px; border: 1.5px solid #E2E8F0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+    
+    <!-- Top Header & Live Spot Pulse -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; border-bottom: 1px solid #F1F5F9; padding-bottom: 14px;">
+      <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+        <div style="font-size: 1.15rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 8px;">
+          ⚡ પ્રો સ્કેલ્પર અને ઓટો-અલ્ગો કમાન્ડ સેન્ટર
+        </div>
+        <span id="scalper-mode-badge" style="font-size: 0.8rem; font-weight: 800; background: #DCFCE7; color: #166534; padding: 4px 12px; border-radius: 20px; border: 1px solid #86EFAC;">
+          🛡️ PAPER TRADING (Safe Mode)
+        </span>
+        <span id="scalper-engine-badge" style="font-size: 0.8rem; font-weight: 800; background: #EFF6FF; color: #1D4ED8; padding: 4px 12px; border-radius: 20px; border: 1px solid #BFDBFE;">
+          🤖 અલ્ગો: સક્રિય (Auto Scanning)
+        </span>
       </div>
-      <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-        <button id="btn-fullscreen" class="btn btn-secondary" style="padding: 5px 14px; font-size: 0.78rem; font-weight: 800; border: 1.5px solid #CBD5E1; display: flex; align-items: center; gap: 5px;" onclick="toggleFullscreenChart()">
-          ⛶ મોટો ચાર્ટ (Full Screen)
+      
+      <!-- Right Quick Actions -->
+      <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <button id="btn-scalper-toggle-engine" class="btn btn-primary" style="padding: 6px 16px; font-size: 0.82rem; font-weight: 800;" onclick="toggleEngineState()">
+          ⏸️ થોભાવો (Pause Engine)
+        </button>
+        <button id="btn-scalper-toggle-mode" class="btn btn-secondary" style="padding: 6px 14px; font-size: 0.82rem; font-weight: 800;" onclick="toggleTradingMode()">
+          🔄 મોડ બદલો (Paper / Real)
+        </button>
+        <button id="btn-emergency-kill" class="btn" style="background: #DC2626; color: #FFFFFF; padding: 6px 16px; font-size: 0.82rem; font-weight: 800; border-radius: 6px; border: none; cursor: pointer;" onclick="executeEmergencyKill()">
+          🛑 ઇમરજન્સી કિલ (Close All)
         </button>
       </div>
     </div>
-    
-    <div class="chart-quick-symbols" style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px;">
-      <button id="sym-btn-NIFTY" class="btn btn-primary" style="padding: 4px 12px; font-size: 0.78rem;" onclick="switchChart('NIFTY')">🇮🇳 NIFTY 50</button>
-      <button id="sym-btn-BANKNIFTY" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.78rem;" onclick="switchChart('BANKNIFTY')">🇮🇳 Bank Nifty</button>
-      <button id="sym-btn-SENSEX" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.78rem;" onclick="switchChart('SENSEX')">🇮🇳 Sensex</button>
-      <button id="sym-btn-RELIANCE" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.78rem;" onclick="switchChart('RELIANCE')">Reliance</button>
-      <button id="sym-btn-HDFCBANK" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.78rem;" onclick="switchChart('HDFCBANK')">HDFC Bank</button>
-      <button id="sym-btn-SBIN" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.78rem;" onclick="switchChart('SBIN')">State Bank (SBI)</button>
-      <button id="sym-btn-TATAMOTORS" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.78rem;" onclick="switchChart('TATAMOTORS')">Tata Motors</button>
-      <button id="sym-btn-ICICIBANK" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.78rem;" onclick="switchChart('ICICIBANK')">ICICI Bank</button>
-      <button id="sym-btn-TCS" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.78rem;" onclick="switchChart('TCS')">TCS</button>
-      <button id="sym-btn-INFY" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.78rem;" onclick="switchChart('INFY')">Infosys</button>
-    </div>
 
-    <!-- INDmoney Pro Chart Controls Toolbar -->
-    <div class="chart-controls-toolbar" style="display: flex; justify-content: space-between; align-items: center; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 6px 12px; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
-      <!-- Timeframe Selector -->
-      <div style="display: flex; align-items: center; gap: 4px; flex-wrap: wrap;">
-        <span style="font-size: 0.75rem; font-weight: 700; color: #64748B; margin-right: 4px;">TIMING:</span>
-        <button id="tf-1m" class="btn btn-primary" style="padding: 3px 8px; font-size: 0.72rem;" onclick="switchTimeframe('1m')">1m</button>
-        <button id="tf-5m" class="btn btn-secondary" style="padding: 3px 8px; font-size: 0.72rem;" onclick="switchTimeframe('5m')">5m</button>
-        <button id="tf-15m" class="btn btn-secondary" style="padding: 3px 8px; font-size: 0.72rem;" onclick="switchTimeframe('15m')">15m</button>
-        <button id="tf-30m" class="btn btn-secondary" style="padding: 3px 8px; font-size: 0.72rem;" onclick="switchTimeframe('30m')">30m</button>
-        <button id="tf-1h" class="btn btn-secondary" style="padding: 3px 8px; font-size: 0.72rem;" onclick="switchTimeframe('1h')">1h</button>
-        <button id="tf-1d" class="btn btn-secondary" style="padding: 3px 8px; font-size: 0.72rem;" onclick="switchTimeframe('1d')">1D</button>
+    <!-- Live Market Setup & Strategy Signal Banner -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-bottom: 18px;">
+      <!-- Selected Index Spot -->
+      <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px 14px;">
+        <div style="font-size: 0.75rem; font-weight: 700; color: #64748B; text-transform: uppercase;">પસંદ કરેલ ઇન્ડેક્સ (Live Spot)</div>
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 4px;">
+          <span id="scalper-selected-sym" style="font-size: 1.25rem; font-weight: 900; color: #0F172A;">NIFTY 50</span>
+          <span id="scalper-selected-ltp" style="font-size: 1.25rem; font-weight: 900; color: #2563EB;">₹23,553.90</span>
+        </div>
+        <div style="font-size: 0.72rem; color: #64748B; margin-top: 2px;" id="scalper-selected-chg">Change: -0.95% | Angel One 0-Delay</div>
       </div>
 
-      <!-- Indicators Toggles -->
-      <div id="native-indicators-bar" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-        <span style="font-size: 0.75rem; font-weight: 700; color: #64748B; margin-right: 4px;">INDICATORS:</span>
-        <button id="btn-ind-ema9" class="btn btn-primary" style="padding: 3px 9px; font-size: 0.72rem;" onclick="toggleIndicator('ema9')">EMA 9 (Blue)</button>
-        <button id="btn-ind-ema21" class="btn btn-primary" style="padding: 3px 9px; font-size: 0.72rem;" onclick="toggleIndicator('ema21')">EMA 21 (Orange)</button>
-        <button id="btn-ind-rsi" class="btn btn-secondary" style="padding: 3px 9px; font-size: 0.72rem;" onclick="toggleIndicator('rsi')">RSI (14)</button>
-        <button id="btn-ind-vol" class="btn btn-primary" style="padding: 3px 9px; font-size: 0.72rem;" onclick="toggleIndicator('vol')">Volume</button>
-        <button id="btn-chart-type" class="btn btn-secondary" style="padding: 3px 9px; font-size: 0.72rem;" onclick="toggleChartType()">Candles</button>
+      <!-- Strategy Confirmation Status -->
+      <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px 14px;">
+        <div style="font-size: 0.75rem; font-weight: 700; color: #64748B; text-transform: uppercase;">અલ્ગો સિગ્નલ (EMA 9/21 + RSI)</div>
+        <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+          <span id="scalper-algo-signal" style="font-size: 1.05rem; font-weight: 900; color: #16A34A;">🟢 BULLISH (9 EMA > 21 EMA)</span>
+        </div>
+        <div style="font-size: 0.72rem; color: #64748B; margin-top: 2px;" id="scalper-algo-detail">RSI (14): 56.4 | ટ્રેન્ડ કન્ફર્મ થયે ઓટો-ટ્રેડ પડશે</div>
+      </div>
+
+      <!-- Daily P&L & Margin -->
+      <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px 14px;">
+        <div style="font-size: 0.75rem; font-weight: 700; color: #64748B; text-transform: uppercase;">આજનો કુલ P&L અને માર્જિન</div>
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 4px;">
+          <span id="scalper-total-pnl" style="font-size: 1.25rem; font-weight: 900; color: #16A34A;">+₹0.00</span>
+          <span id="scalper-margin-avail" style="font-size: 0.85rem; font-weight: 800; color: #475569;">માર્જિન: ₹1,00,000</span>
+        </div>
+        <div style="font-size: 0.72rem; color: #64748B; margin-top: 2px;">ચાલુ ટ્રેડ્સ: <span id="scalper-active-count" style="font-weight: 800; color: #0F172A;">0</span> | ક્લોઝ્ડ: <span id="scalper-closed-count">0</span></div>
       </div>
     </div>
 
-    <!-- Native Lightweight Chart Container (100% Free, No Popups, Live NSE Data) -->
-    <div id="native-chart-wrapper" style="position: relative; height: 480px; width: 100%; border-radius: 8px 8px 0 0; border: 1.5px solid #CBD5E1; overflow: hidden; background: #FFFFFF; display: block;">
-      <div id="lightweight_chart_container" style="width: 100%; height: 100%;"></div>
-    </div>
+    <!-- 1-Click Pro Scalper Console -->
+    <div style="background: #F1F5F9; border: 1.5px solid #CBD5E1; border-radius: 10px; padding: 16px;">
+      
+      <!-- Index Selector Tabs -->
+      <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px;">
+        <button id="scalp-sym-NIFTY" class="btn btn-primary" style="padding: 6px 14px; font-size: 0.82rem; font-weight: 800;" onclick="selectScalpSymbol('NIFTY')">
+          🇮🇳 NIFTY 50 (ATM)
+        </button>
+        <button id="scalp-sym-BANKNIFTY" class="btn btn-secondary" style="padding: 6px 14px; font-size: 0.82rem; font-weight: 800;" onclick="selectScalpSymbol('BANKNIFTY')">
+          🇮🇳 BANK NIFTY (ATM)
+        </button>
+        <button id="scalp-sym-SENSEX" class="btn btn-secondary" style="padding: 6px 14px; font-size: 0.82rem; font-weight: 800;" onclick="selectScalpSymbol('SENSEX')">
+          🇮🇳 SENSEX (ATM)
+        </button>
+        <button id="scalp-sym-FINNIFTY" class="btn btn-secondary" style="padding: 6px 14px; font-size: 0.82rem; font-weight: 800;" onclick="selectScalpSymbol('FINNIFTY')">
+          🇮🇳 FIN NIFTY (ATM)
+        </button>
+      </div>
 
-    <!-- Dedicated INDmoney-Style RSI Sub-Chart Pane -->
-    <div id="rsi-subchart-wrapper" style="display: none; height: 110px; width: 100%; border: 1.5px solid #CBD5E1; border-top: none; border-radius: 0 0 8px 8px; background: #FAF5FF; position: relative;">
-      <div style="display: flex; justify-content: space-between; align-items: center; padding: 3px 12px; background: #F3E8FF; border-bottom: 1px solid #E9D5FF;">
-        <span style="font-size: 0.74rem; font-weight: 800; color: #7E22CE;">🟣 RSI (14) - રિલેટિવ સ્ટ્રેન્થ ઇન્ડેક્સ (ઓસિલેટર)</span>
-        <div style="display: flex; align-items: center; gap: 10px; font-size: 0.72rem;">
-          <span style="color: #DC2626; font-weight: 700;">ઓવરબોટ: 70</span>
-          <span style="color: #64748B; font-weight: 700;">મધ્યરેખા: 50</span>
-          <span style="color: #16A34A; font-weight: 700;">ઓવરસોલ્ડ: 30</span>
-          <span id="rsi-val-badge" style="font-weight: 800; color: #7E22CE; background: #FFFFFF; padding: 1px 7px; border-radius: 4px; border: 1px solid #D8B4FE;">RSI: --</span>
+      <!-- Parameter Adjusters Row -->
+      <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; background: #FFFFFF; padding: 10px 14px; border-radius: 8px; border: 1px solid #E2E8F0;">
+        <!-- Lot Selector -->
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 0.8rem; font-weight: 800; color: #475569;">લૉટ (Lots):</span>
+          <button class="btn btn-secondary" style="padding: 2px 8px; font-weight: 800;" onclick="changeScalpParam('lots', -1)">-</button>
+          <span id="scalp-param-lots" style="font-size: 0.95rem; font-weight: 900; min-width: 24px; text-align: center;">1</span>
+          <button class="btn btn-secondary" style="padding: 2px 8px; font-weight: 800;" onclick="changeScalpParam('lots', 1)">+</button>
+          <span id="scalp-param-qty" style="font-size: 0.75rem; color: #64748B; font-weight: 700;">(75 Qty)</span>
+        </div>
+
+        <!-- Stoploss Adjuster -->
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 0.8rem; font-weight: 800; color: #DC2626;">સ્ટોપલોસ (SL):</span>
+          <button class="btn btn-secondary" style="padding: 2px 8px; font-weight: 800;" onclick="changeScalpParam('sl', -5)">-</button>
+          <span id="scalp-param-sl" style="font-size: 0.95rem; font-weight: 900; min-width: 28px; text-align: center; color: #DC2626;">15</span>
+          <button class="btn btn-secondary" style="padding: 2px 8px; font-weight: 800;" onclick="changeScalpParam('sl', 5)">+</button>
+          <span style="font-size: 0.75rem; color: #64748B; font-weight: 700;">Pts</span>
+        </div>
+
+        <!-- Target Adjuster -->
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 0.8rem; font-weight: 800; color: #16A34A;">ટાર્ગેટ (Target):</span>
+          <button class="btn btn-secondary" style="padding: 2px 8px; font-weight: 800;" onclick="changeScalpParam('tgt', -5)">-</button>
+          <span id="scalp-param-tgt" style="font-size: 0.95rem; font-weight: 900; min-width: 28px; text-align: center; color: #16A34A;">30</span>
+          <button class="btn btn-secondary" style="padding: 2px 8px; font-weight: 800;" onclick="changeScalpParam('tgt', 5)">+</button>
+          <span style="font-size: 0.75rem; color: #64748B; font-weight: 700;">Pts (1:2 R:R)</span>
+        </div>
+
+        <div style="font-size: 0.78rem; font-weight: 700; color: #475569; margin-left: auto;">
+          ATM Strike: <span id="scalp-calculated-strike" style="color: #2563EB; font-weight: 900; font-size: 0.9rem;">23550</span>
         </div>
       </div>
-      <div id="rsi_chart_container" style="width: 100%; height: 85px;"></div>
+
+      <!-- Action Execution Buttons -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+        <button id="btn-scalp-buy-ce" class="btn" style="background: #16A34A; color: #FFFFFF; padding: 14px; font-size: 1.05rem; font-weight: 900; border-radius: 8px; border: none; cursor: pointer; box-shadow: 0 4px 6px -1px rgba(22, 163, 74, 0.3); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;" onclick="executeScalpOrder('CE')">
+          <span>🟢 BUY CALL (ATM CE)</span>
+          <span id="btn-label-ce-strike" style="font-size: 0.75rem; font-weight: 600; opacity: 0.9;">NIFTY 23550 CE @ ~₹115 | 1 Lot (75)</span>
+        </button>
+
+        <button id="btn-scalp-buy-pe" class="btn" style="background: #DC2626; color: #FFFFFF; padding: 14px; font-size: 1.05rem; font-weight: 900; border-radius: 8px; border: none; cursor: pointer; box-shadow: 0 4px 6px -1px rgba(220, 38, 38, 0.3); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;" onclick="executeScalpOrder('PE')">
+          <span>🔴 BUY PUT (ATM PE)</span>
+          <span id="btn-label-pe-strike" style="font-size: 0.75rem; font-weight: 600; opacity: 0.9;">NIFTY 23550 PE @ ~₹115 | 1 Lot (75)</span>
+        </button>
+      </div>
+
     </div>
+
   </section>
 
   <div class="dashboard-grid">

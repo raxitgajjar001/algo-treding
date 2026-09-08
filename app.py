@@ -193,7 +193,7 @@ async def tick_updater_worker():
             await loop.run_in_executor(None, update_all_ticks_background)
         except Exception as e:
             pass
-        await asyncio.sleep(0.4)
+        await asyncio.sleep(1.5)
 
 async def keep_alive_worker():
     while True:
@@ -559,6 +559,16 @@ def export_trades_csv(filter: str = "all"):
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
+
+@app.post('/api/scalper/order')
+def scalper_order_route(payload: Dict[str, Any]):
+    und = payload.get("symbol", "NIFTY")
+    opt_type = payload.get("option_type", "CE")
+    lots = int(payload.get("lots", 1))
+    sl_pts = float(payload.get("sl_pts", 15.0))
+    tgt_pts = float(payload.get("tgt_pts", 30.0))
+    res = engine.place_scalper_trade(und, opt_type, lots, sl_pts, tgt_pts)
+    return res
 
 @app.post('/api/trades/close/{trade_id}')
 def manual_close_trade(trade_id: str):

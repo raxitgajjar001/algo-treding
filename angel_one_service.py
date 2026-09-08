@@ -320,6 +320,43 @@ class AngelOneService:
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
+    def get_atm_option_details(self, underlying: str, spot_price: float, option_type: str) -> Dict[str, Any]:
+        """Calculates ATM strike, contract label, lot size and estimated premium"""
+        und = underlying.upper().strip()
+        opt = option_type.upper().strip()
+        
+        lot_sizes = {
+            "NIFTY": 75,
+            "BANKNIFTY": 15,
+            "FINNIFTY": 25,
+            "SENSEX": 10,
+            "MIDCPNIFTY": 50
+        }
+        lot_size = lot_sizes.get(und, 75)
+        
+        step = 50
+        if und in ("BANKNIFTY", "SENSEX"):
+            step = 100
+        elif und == "MIDCPNIFTY":
+            step = 25
+            
+        atm_strike = int(round(spot_price / step) * step) if spot_price > 0 else (23550 if und == "NIFTY" else 56800)
+        
+        diff = abs(spot_price - atm_strike)
+        base_tv = 115.0 if und == "NIFTY" else (230.0 if und == "BANKNIFTY" else 95.0)
+        est_premium = round(max(35.0, base_tv + (diff * 0.45)), 1)
+        
+        tradingsymbol = f"{und} {atm_strike} {opt}"
+        
+        return {
+            "underlying": und,
+            "strike": atm_strike,
+            "option_type": opt,
+            "tradingsymbol": tradingsymbol,
+            "lot_size": lot_size,
+            "estimated_premium": est_premium
+        }
+
 angel_one_service = AngelOneService()
 # Auto-authenticate if config exists
 if angel_one_service.config.get("client_code") and angel_one_service.config.get("api_key"):

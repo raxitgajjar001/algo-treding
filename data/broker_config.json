@@ -2,8 +2,8 @@
   "active_broker": "ANGEL_ONE",
   "credentials": {
     "ANGEL_ONE": {
-      "api_key": "EYFEyOof",
-      "client_code": "AABQ633041",
+      "api_key": "",
+      "client_code": "",
       "pin": "9601",
       "totp_secret": "37EEZXEC5HPW3S7JJSZC7XH4U4"
     },
