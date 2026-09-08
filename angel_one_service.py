@@ -156,8 +156,8 @@ class AngelOneService:
         cache_key = f"{symbol.upper()}_{interval}"
         now_ts = time.time()
         cached = self.candle_cache.get(cache_key)
-        # 20 second cache to avoid Angel One candle rate limits
-        if cached and (now_ts - cached["time"] < 20.0):
+        # 45 second cache to avoid Angel One candle rate limits completely
+        if cached and (now_ts - cached["time"] < 45.0):
             return cached["data"]
 
         tokens = {

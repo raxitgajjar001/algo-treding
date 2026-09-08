@@ -741,9 +741,9 @@ def get_market_chart(symbol: str, interval: str = "5m"):
     tf_interval, tf_range = interval_map.get(interval.lower(), ("5m", "1d"))
     cache_key = f"{sym}_{tf_interval}"
 
-    # Check cache (15s TTL to avoid rate limit stalls)
+    # Check cache (45s TTL to prevent Angel One rate limiting)
     cached = CHART_CACHE.get(cache_key)
-    if cached and (now - cached["time"] < 15.0):
+    if cached and (now - cached["time"] < 45.0):
         # Update last candle with latest real-time tick from RAM
         live_tick = REAL_LIVE_TICKS_CACHE.get("ticks", {}).get(sym)
         if live_tick and live_tick.get("ltp") and cached["data"].get("candles"):
@@ -790,6 +790,17 @@ def get_market_chart(symbol: str, interval: str = "5m"):
                 return result_payload
     except Exception:
         pass
+
+    # If Angel One temporary rate limit or error, reuse previously cached Angel One candles rather than Yahoo
+    if cached and cached.get("data") and cached["data"].get("candles"):
+        live_tick = REAL_LIVE_TICKS_CACHE.get("ticks", {}).get(sym)
+        if live_tick and live_tick.get("ltp"):
+            last_c = cached["data"]["candles"][-1]
+            last_c["close"] = live_tick["ltp"]
+            if live_tick["ltp"] > last_c["high"]: last_c["high"] = live_tick["ltp"]
+            if live_tick["ltp"] < last_c["low"]: last_c["low"] = live_tick["ltp"]
+            cached["data"]["current_price"] = live_tick["ltp"]
+        return cached["data"]
 
     # Try Yahoo Finance for real Indian market candles
     ticker = YAHOO_SYMBOL_MAP.get(sym)

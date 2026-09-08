@@ -13,151 +13,11 @@ let rsiUpperSeries = null;
 let rsiMiddleSeries = null;
 let rsiLowerSeries = null;
 
-let currentChartEngine = 'tradingview'; // 'tradingview' or 'native'
-let tvWidgetInstance = null;
 let currentChartSymbol = 'NIFTY';
 let currentTimeframe = '1m';
 let currentCandle = null;
 let allCandles = [];
 let allVolumes = [];
-
-const TV_SYMBOL_MAP = {
-  'NIFTY': 'NSE:NIFTY',
-  'BANKNIFTY': 'NSE:BANKNIFTY',
-  'FINNIFTY': 'NSE:FINNIFTY',
-  'MIDCPNIFTY': 'NSE:MIDCPNIFTY',
-  'SENSEX': 'BSE:SENSEX',
-  'RELIANCE': 'NSE:RELIANCE',
-  'HDFCBANK': 'NSE:HDFCBANK',
-  'ICICIBANK': 'NSE:ICICIBANK',
-  'SBIN': 'NSE:SBIN',
-  'TATAMOTORS': 'NSE:TATAMOTORS',
-  'TCS': 'NSE:TCS',
-  'INFY': 'NSE:INFY'
-};
-
-function getTradingViewSymbol(sym) {
-  if (!sym) return 'NSE:NIFTY';
-  const clean = sym.replace('NSE:', '').replace('BSE:', '').toUpperCase().trim();
-  if (clean.includes('_CE') || clean.includes('_PE')) {
-    if (clean.startsWith('BANKNIFTY')) return 'NSE:BANKNIFTY';
-    if (clean.startsWith('FINNIFTY')) return 'NSE:FINNIFTY';
-    return 'NSE:NIFTY';
-  }
-  if (TV_SYMBOL_MAP[clean]) return TV_SYMBOL_MAP[clean];
-  if (clean.includes('SENSEX')) return 'BSE:SENSEX';
-  return 'NSE:' + clean;
-}
-
-function getTradingViewInterval(tf) {
-  switch ((tf || '').toLowerCase()) {
-    case '1m': return '1';
-    case '3m': return '3';
-    case '5m': return '5';
-    case '15m': return '15';
-    case '30m': return '30';
-    case '1h': case '60m': return '60';
-    case '1d': return 'D';
-    default: return '1';
-  }
-}
-
-function initTradingViewWidget(symbol = 'NIFTY', timeframe = '1m') {
-  const container = document.getElementById('tradingview_chart_container');
-  if (!container) return;
-
-  const tvSym = getTradingViewSymbol(symbol);
-  const tvIntv = getTradingViewInterval(timeframe);
-
-  container.innerHTML = '';
-
-  if (typeof TradingView !== 'undefined') {
-    try {
-      tvWidgetInstance = new TradingView.widget({
-        "autosize": true,
-        "symbol": tvSym,
-        "interval": tvIntv,
-        "timezone": "Asia/Kolkata",
-        "theme": "light",
-        "style": "1",
-        "locale": "in",
-        "toolbar_bg": "#f8fafc",
-        "enable_publishing": false,
-        "allow_symbol_change": true,
-        "hide_top_toolbar": false,
-        "hide_legend": false,
-        "save_image": false,
-        "container_id": "tradingview_chart_container",
-        "withdateranges": true,
-        "details": false,
-        "hotlist": false,
-        "calendar": false,
-        "studies": [
-          "MASimple@tv-basicstudies",
-          "RSI@tv-basicstudies"
-        ]
-      });
-    } catch (err) {
-      console.error('TradingView Widget init error:', err);
-    }
-  } else {
-    // Fallback: embed iframe directly if script hasn't fully loaded
-    const iframe = document.createElement('iframe');
-    iframe.src = `https://s.tradingview.com/widgetembed/?frameElementId=tradingview_widget&symbol=${encodeURIComponent(tvSym)}&interval=${tvIntv}&theme=light&style=1&timezone=Asia%2FKolkata&locale=in`;
-    iframe.style.width = '100%';
-    iframe.style.height = '100%';
-    iframe.style.border = 'none';
-    container.appendChild(iframe);
-  }
-}
-
-function switchChartEngine(engine) {
-  currentChartEngine = engine;
-  const tvWrap = document.getElementById('tradingview-chart-wrapper');
-  const nativeWrap = document.getElementById('native-chart-wrapper');
-  const rsiWrap = document.getElementById('rsi-subchart-wrapper');
-  const nativeInds = document.getElementById('native-indicators-bar');
-  const btnTv = document.getElementById('engine-btn-tv');
-  const btnNative = document.getElementById('engine-btn-native');
-
-  if (engine === 'tradingview') {
-    if (tvWrap) tvWrap.style.display = 'block';
-    if (nativeWrap) nativeWrap.style.display = 'none';
-    if (rsiWrap) rsiWrap.style.display = 'none';
-    if (nativeInds) nativeInds.style.display = 'none';
-    if (btnTv) {
-      btnTv.className = 'btn btn-primary';
-      btnTv.style.background = '#2563EB';
-      btnTv.style.color = '#FFFFFF';
-    }
-    if (btnNative) {
-      btnNative.className = 'btn btn-secondary';
-      btnNative.style.background = 'transparent';
-      btnNative.style.color = '#64748B';
-    }
-    initTradingViewWidget(currentChartSymbol, currentTimeframe);
-  } else {
-    if (tvWrap) tvWrap.style.display = 'none';
-    if (nativeWrap) nativeWrap.style.display = 'block';
-    if (rsiWrap && indicatorsState.rsi) rsiWrap.style.display = 'block';
-    if (nativeInds) nativeInds.style.display = 'flex';
-    if (btnTv) {
-      btnTv.className = 'btn btn-secondary';
-      btnTv.style.background = 'transparent';
-      btnTv.style.color = '#64748B';
-    }
-    if (btnNative) {
-      btnNative.className = 'btn btn-primary';
-      btnNative.style.background = '#2563EB';
-      btnNative.style.color = '#FFFFFF';
-    }
-    if (!nativeChart) {
-      initNativeChart(currentChartSymbol);
-    } else {
-      loadChartData(currentChartSymbol, currentTimeframe);
-    }
-  }
-}
 
 let indicatorsState = {
   ema9: true,
@@ -605,14 +465,10 @@ function switchChart(rawSymbol) {
     renderIndexCategoryItems(activeIndexCategory);
   }
 
-  if (currentChartEngine === 'tradingview') {
-    initTradingViewWidget(sym, currentTimeframe);
+  if (!nativeChart) {
+    initNativeChart(sym);
   } else {
-    if (!nativeChart) {
-      initNativeChart(sym);
-    } else {
-      loadChartData(sym, currentTimeframe);
-    }
+    loadChartData(sym, currentTimeframe);
   }
 
   // Smooth scroll to chart on mobile for great UX
@@ -634,11 +490,7 @@ function switchTimeframe(tf) {
     }
   });
 
-  if (currentChartEngine === 'tradingview') {
-    initTradingViewWidget(currentChartSymbol, tf);
-  } else {
-    loadChartData(currentChartSymbol, tf);
-  }
+  loadChartData(currentChartSymbol, tf);
 }
 
 function toggleIndicator(ind) {
@@ -2269,15 +2121,7 @@ function startDashboardLoops() {
   try { fetchTradeHistory(); } catch (e) { console.error('fetchTradeHistory err:', e); }
   try { fetchAccounts(); } catch (e) { console.error('fetchAccounts err:', e); }
   try { fetchNews(); } catch (e) { console.error('fetchNews err:', e); }
-  try {
-    if (currentChartEngine === 'tradingview') {
-      initTradingViewWidget('NIFTY', '1m');
-    } else {
-      initNativeChart('NIFTY');
-    }
-  } catch (e) {
-    try { initNativeChart('NIFTY'); } catch (err) {}
-  }
+  try { initNativeChart('NIFTY'); } catch (e) { console.error('initNativeChart err:', e); }
   try { checkBrokerAndAngelStatus(); } catch (e) { console.error('checkBrokerAndAngelStatus err:', e); }
 
   setInterval(() => { try { fetchLiveTicks(); } catch(e){} }, 400);
