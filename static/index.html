@@ -148,75 +148,6 @@
     </div>
   </section>
 
-  <!-- Control & Settings Bar -->
-  <section class="control-panel">
-    <div class="control-group">
-      <button id="btn-toggle-engine" class="btn btn-primary" onclick="toggleEngine()">
-        ▶️ Start Auto-Trading (ઓટો ટ્રેડિંગ શરૂ કરો)
-      </button>
-      <span id="engine-subtext" style="font-size: 0.82rem; color: #64748B; font-weight: 600;">
-        (સિસ્ટમ આપોઆપ સારા સોદા શોધીને BUY અને SELL કરશે)
-      </span>
-    </div>
-
-    <div class="control-group">
-      <div class="slider-container">
-        <label for="capital-pct-slider">મહત્તમ કેપિટલ રિસ્ક પુલ % (Max Capital Allocation):</label>
-        <input type="range" id="capital-pct-slider" min="5" max="50" step="5" value="25" onchange="updateCapitalPct(this.value)" oninput="document.getElementById('capital-pct-val').textContent = this.value + '%'" />
-        <span id="capital-pct-val" class="slider-value">25%</span>
-      </div>
-    </div>
-  </section>
-
-  <!-- Main Grid -->
-  
-  <!-- 5-Category Index & F&O Market Watch Explorer (As per user screenshots) -->
-  <section class="index-explorer-panel">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
-      <div>
-        <h2 style="font-size: 1.02rem; font-weight: 800; color: #0F172A; margin: 0; display: flex; align-items: center; gap: 8px;">
-          🌐 ભારતીય માર્કેટ વૉચ & ઇન્ડેક્સ એક્સપ્લોરર (5 Categories & F&O)
-        </h2>
-        <p style="font-size: 0.74rem; color: #64748B; margin: 3px 0 0 0;">
-          સ્ક્રીનશોટ મુજબ તમામ 5 કેટેગરી અને F&O ઓપ્શન્સ — કોઈપણ કાર્ડ પર ક્લિક કરી સીધો લાઈવ ચાર્ટ ખોલો
-        </p>
-      </div>
-      <span id="indices-count-badge" class="badge badge-paper" style="font-size: 0.74rem; font-weight: 700;">
-        65+ ઇન્ડેક્સ & F&O ઉપલબ્ધ
-      </span>
-    </div>
-
-    <!-- Category Tabs Navigation -->
-    <div class="index-cat-tabs">
-      <button id="cat-tab-key_indices" class="cat-tab-btn active" onclick="switchIndexCategory('key_indices')">
-        ⭐ મુખ્ય સૂચકાંકો (7)
-      </button>
-      <button id="cat-tab-sectoral" class="cat-tab-btn" onclick="switchIndexCategory('sectoral')">
-        🏭 સેક્ટોરલ ઇન્ડેક્સ (12)
-      </button>
-      <button id="cat-tab-market_cap" class="cat-tab-btn" onclick="switchIndexCategory('market_cap')">
-        🏢 માર્કેટ કેપ આધારિત (6)
-      </button>
-      <button id="cat-tab-nse_indices" class="cat-tab-btn" onclick="switchIndexCategory('nse_indices')">
-        📈 NSE ઇન્ડેક્સ (24)
-      </button>
-      <button id="cat-tab-bse_indices" class="cat-tab-btn" onclick="switchIndexCategory('bse_indices')">
-        🏛️ BSE ઇન્ડેક્સ (16)
-      </button>
-      <button id="cat-tab-fno_options" class="cat-tab-btn" onclick="switchIndexCategory('fno_options')">
-        ⚡ F&O ઓપ્શન્સ (CE/PE)
-      </button>
-    </div>
-
-    <!-- Category Items Cards Grid -->
-    <div id="index-category-grid" class="index-grid">
-      <div style="grid-column: 1 / -1; text-align: center; padding: 20px; color: #64748B; font-size: 0.85rem;">
-        ⏳ ઇન્ડેક્સ ડેટા લોડ થઈ રહ્યો છે...
-      </div>
-    </div>
-  </section>
-
-  <!-- Live Interactive Chart Section -->
   <!-- Pro High-Speed Scalper & Autonomous Algo Command Center -->
   <section class="panel scalper-panel" style="margin-bottom: 20px; padding: 18px 20px; background: #FFFFFF; border-radius: 12px; border: 1.5px solid #E2E8F0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
     
@@ -255,9 +186,9 @@
         <div style="font-size: 0.75rem; font-weight: 700; color: #64748B; text-transform: uppercase;">પસંદ કરેલ ઇન્ડેક્સ (Live Spot)</div>
         <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 4px;">
           <span id="scalper-selected-sym" style="font-size: 1.25rem; font-weight: 900; color: #0F172A;">NIFTY 50</span>
-          <span id="scalper-selected-ltp" style="font-size: 1.25rem; font-weight: 900; color: #2563EB;">₹23,553.90</span>
+          <span id="scalper-selected-ltp" style="font-size: 1.25rem; font-weight: 900; color: #2563EB;">₹23,635.10</span>
         </div>
-        <div style="font-size: 0.72rem; color: #64748B; margin-top: 2px;" id="scalper-selected-chg">Change: -0.95% | Angel One 0-Delay</div>
+        <div style="font-size: 0.72rem; color: #64748B; margin-top: 2px;" id="scalper-selected-chg">Change: -0.61% | Angel One 0-Delay</div>
       </div>
 
       <!-- Strategy Confirmation Status -->
@@ -329,7 +260,7 @@
         </div>
 
         <div style="font-size: 0.78rem; font-weight: 700; color: #475569; margin-left: auto;">
-          ATM Strike: <span id="scalp-calculated-strike" style="color: #2563EB; font-weight: 900; font-size: 0.9rem;">23550</span>
+          ATM Strike: <span id="scalp-calculated-strike" style="color: #2563EB; font-weight: 900; font-size: 0.9rem;">23650</span>
         </div>
       </div>
 
@@ -337,17 +268,65 @@
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
         <button id="btn-scalp-buy-ce" class="btn" style="background: #16A34A; color: #FFFFFF; padding: 14px; font-size: 1.05rem; font-weight: 900; border-radius: 8px; border: none; cursor: pointer; box-shadow: 0 4px 6px -1px rgba(22, 163, 74, 0.3); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;" onclick="executeScalpOrder('CE')">
           <span>🟢 BUY CALL (ATM CE)</span>
-          <span id="btn-label-ce-strike" style="font-size: 0.75rem; font-weight: 600; opacity: 0.9;">NIFTY 23550 CE @ ~₹115 | 1 Lot (75)</span>
+          <span id="btn-label-ce-strike" style="font-size: 0.75rem; font-weight: 600; opacity: 0.9;">NIFTY 23650 CE @ ~₹115 | 1 Lot (75)</span>
         </button>
 
         <button id="btn-scalp-buy-pe" class="btn" style="background: #DC2626; color: #FFFFFF; padding: 14px; font-size: 1.05rem; font-weight: 900; border-radius: 8px; border: none; cursor: pointer; box-shadow: 0 4px 6px -1px rgba(220, 38, 38, 0.3); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;" onclick="executeScalpOrder('PE')">
           <span>🔴 BUY PUT (ATM PE)</span>
-          <span id="btn-label-pe-strike" style="font-size: 0.75rem; font-weight: 600; opacity: 0.9;">NIFTY 23550 PE @ ~₹115 | 1 Lot (75)</span>
+          <span id="btn-label-pe-strike" style="font-size: 0.75rem; font-weight: 600; opacity: 0.9;">NIFTY 23650 PE @ ~₹115 | 1 Lot (75)</span>
         </button>
       </div>
 
     </div>
 
+  </section>
+
+  <!-- Main Grid -->
+  
+  <!-- 5-Category Index & F&O Market Watch Explorer (As per user screenshots) -->
+  <section class="index-explorer-panel">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+      <div>
+        <h2 style="font-size: 1.02rem; font-weight: 800; color: #0F172A; margin: 0; display: flex; align-items: center; gap: 8px;">
+          🌐 ભારતીય માર્કેટ વૉચ & ઇન્ડેક્સ એક્સપ્લોરર (5 Categories & F&O)
+        </h2>
+        <p style="font-size: 0.74rem; color: #64748B; margin: 3px 0 0 0;">
+          સ્ક્રીનશોટ મુજબ તમામ 5 કેટેગરી અને F&O ઓપ્શન્સ — કોઈપણ કાર્ડ પર ક્લિક કરી સીધો લાઈવ ચાર્ટ ખોલો
+        </p>
+      </div>
+      <span id="indices-count-badge" class="badge badge-paper" style="font-size: 0.74rem; font-weight: 700;">
+        65+ ઇન્ડેક્સ & F&O ઉપલબ્ધ
+      </span>
+    </div>
+
+    <!-- Category Tabs Navigation -->
+    <div class="index-cat-tabs">
+      <button id="cat-tab-key_indices" class="cat-tab-btn active" onclick="switchIndexCategory('key_indices')">
+        ⭐ મુખ્ય સૂચકાંકો (7)
+      </button>
+      <button id="cat-tab-sectoral" class="cat-tab-btn" onclick="switchIndexCategory('sectoral')">
+        🏭 સેક્ટોરલ ઇન્ડેક્સ (12)
+      </button>
+      <button id="cat-tab-market_cap" class="cat-tab-btn" onclick="switchIndexCategory('market_cap')">
+        🏢 માર્કેટ કેપ આધારિત (6)
+      </button>
+      <button id="cat-tab-nse_indices" class="cat-tab-btn" onclick="switchIndexCategory('nse_indices')">
+        📈 NSE ઇન્ડેક્સ (24)
+      </button>
+      <button id="cat-tab-bse_indices" class="cat-tab-btn" onclick="switchIndexCategory('bse_indices')">
+        🏛️ BSE ઇન્ડેક્સ (16)
+      </button>
+      <button id="cat-tab-fno_options" class="cat-tab-btn" onclick="switchIndexCategory('fno_options')">
+        ⚡ F&O ઓપ્શન્સ (CE/PE)
+      </button>
+    </div>
+
+    <!-- Category Items Cards Grid -->
+    <div id="index-category-grid" class="index-grid">
+      <div style="grid-column: 1 / -1; text-align: center; padding: 20px; color: #64748B; font-size: 0.85rem;">
+        ⏳ ઇન્ડેક્સ ડેટા લોડ થઈ રહ્યો છે...
+      </div>
+    </div>
   </section>
 
   <div class="dashboard-grid">
