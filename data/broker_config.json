@@ -1,0 +1,22 @@
+{
+  "active_broker": "PAPER",
+  "credentials": {
+    "ANGEL_ONE": {
+      "api_key": "",
+      "client_code": "",
+      "pin": "",
+      "totp_secret": ""
+    },
+    "DHAN": {
+      "client_id": "",
+      "access_token": ""
+    },
+    "ZERODHA": {
+      "api_key": "",
+      "api_secret": "",
+      "access_token": ""
+    }
+  },
+  "auto_alert_sound": true,
+  "instant_execution": true
+}

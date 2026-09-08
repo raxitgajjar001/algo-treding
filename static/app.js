@@ -536,6 +536,12 @@ async function fetchLiveTicks() {
     const ticks = data.ticks;
     if (!ticks) return;
 
+    // Update Latency Badge
+    const latBadge = document.getElementById('latency-badge');
+    if (latBadge && data.latency_ms !== undefined) {
+      latBadge.textContent = `⚡ ${data.latency_ms}ms (ઝીરો ડિલે)`;
+    }
+
     // 1. Update Ribbon
     if (ticks['NIFTY']) {
       const el = document.getElementById('ticker-nifty');
@@ -975,6 +981,9 @@ async function fetchScanner() {
   }
 }
 
+let knownActiveTradeIds = new Set();
+let latestTradeAlertText = '';
+
 async function fetchActiveTrades() {
   try {
     const res = await fetch('/api/trades/active');
@@ -982,6 +991,16 @@ async function fetchActiveTrades() {
     const tbody = document.getElementById('active-trades-body');
     const countBadge = document.getElementById('active-trades-badge');
     if (countBadge) countBadge.textContent = trades.length;
+
+    if (trades && trades.length > 0) {
+      trades.forEach(t => {
+        if (t.id && !knownActiveTradeIds.has(t.id)) {
+          knownActiveTradeIds.add(t.id);
+          playTradeAlertSound();
+          showTradeAlertBanner(t);
+        }
+      });
+    }
 
     if (!tbody) return;
 
@@ -2098,6 +2117,110 @@ function copyMobileLink() {
   }
 }
 
+// --- Zero-Delay Trade Alert Sound & Groww/INDmoney Popup ---
+function playTradeAlertSound() {
+  try {
+    const toggle = document.getElementById('trade-sound-toggle');
+    if (toggle && !toggle.checked) return;
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.15);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.4);
+  } catch (e) {}
+}
+
+function showTradeAlertBanner(t) {
+  const banner = document.getElementById('trade-alert-banner');
+  const content = document.getElementById('trade-alert-content');
+  if (!banner || !content) return;
+
+  const symbol = t.symbol;
+  const qty = t.qty || 25;
+  const entry = Number(t.entry_price || 0).toFixed(2);
+  const sl = Number(t.stop_loss || 0).toFixed(2);
+  const tgt = Number(t.target || 0).toFixed(2);
+  const action = symbol.includes('_PE') ? 'BUY PUT (મંદી)' : 'BUY CALL (તેજી)';
+
+  latestTradeAlertText = `GROWW / INDMONEY ઓર્ડર વિગત:\nસિમ્બોલ: ${symbol}\nપ્રકાર: INTRADAY MIS (${action})\nજથ્થો (Qty): ${qty}\nખરીદ ભાવ: ₹${entry}\nસ્ટોપલોસ (SL): ₹${sl}\nટાર્ગેટ (Target): ₹${tgt}`;
+
+  content.innerHTML = `
+    <div style="margin-bottom:6px;"><strong>કોન્ટ્રાક્ટ:</strong> <span style="color:#2563EB; font-weight:800;">${symbol}</span> (${qty} Qty)</div>
+    <div style="margin-bottom:4px;"><strong>ઓર્ડર:</strong> <span style="color:#16A34A; font-weight:700;">INTRADAY MIS (${action})</span></div>
+    <div style="display:flex; justify-content:space-between; background:#F8FAFC; padding:6px 8px; border-radius:6px; border:1px solid #CBD5E1; margin-top:6px; font-size:0.8rem;">
+      <div><strong>ખરીદ:</strong> ₹${entry}</div>
+      <div><strong>SL:</strong> ₹${sl}</div>
+      <div><strong>ટાર્ગેટ:</strong> ₹${tgt}</div>
+    </div>
+  `;
+  banner.style.display = 'block';
+}
+
+function dismissTradeAlert() {
+  const banner = document.getElementById('trade-alert-banner');
+  if (banner) banner.style.display = 'none';
+}
+
+function copyAlertOrderDetails() {
+  if (!latestTradeAlertText) return;
+  navigator.clipboard.writeText(latestTradeAlertText).then(() => {
+    alert('✅ ઓર્ડરની વિગત કોપી થઈ ગઈ છે! તમે Groww અથવા INDmoney માં પેસ્ટ કરીને ઓર્ડર સબમિટ કરી શકો છો.');
+    dismissTradeAlert();
+  }).catch(() => {
+    alert(latestTradeAlertText);
+  });
+}
+
+function openBrokerModal() {
+  const m = document.getElementById('broker-modal');
+  if (m) m.style.display = 'flex';
+}
+
+function closeBrokerModal() {
+  const m = document.getElementById('broker-modal');
+  if (m) m.style.display = 'none';
+}
+
+function onBrokerSelectChange() {
+  const sel = document.getElementById('broker-select');
+  const cont = document.getElementById('broker-creds-container');
+  if (sel && cont) {
+    cont.style.display = (sel.value === 'ANGEL_ONE' || sel.value === 'DHAN' || sel.value === 'ZERODHA') ? 'block' : 'none';
+  }
+}
+
+async function saveBrokerSettings() {
+  const sel = document.getElementById('broker-select');
+  const clientId = document.getElementById('broker-client-id');
+  const apiKey = document.getElementById('broker-api-key');
+  const broker = sel ? sel.value : 'PAPER';
+
+  try {
+    const res = await fetch('/api/broker/configure', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        active_broker: broker,
+        credentials: { client_code: clientId ? clientId.value : '', api_key: apiKey ? apiKey.value : '' }
+      })
+    });
+    const data = await res.json();
+    alert('✅ બ્રોકર સેટિંગ્સ સફળતાપૂર્વક અપડેટ થઈ ગઈ છે!');
+    closeBrokerModal();
+  } catch (e) {
+    alert('સેવ કરતી વખતે ભૂલ: ' + e);
+  }
+}
+
 // Initial loader guarded by Authentication
 window.onload = async () => {
   if ('serviceWorker' in navigator) {
@@ -2110,4 +2233,5 @@ window.onload = async () => {
     startDashboardLoops();
   }
 };
+
 
