@@ -17,7 +17,15 @@
   <link rel="manifest" href="/static/manifest.json" />
   <meta name="theme-color" content="#0f172a" />
 
-  <link rel="stylesheet" href="/static/style.css?v=20260908_02" />
+  <link rel="stylesheet" href="/static/style.css?v=20260908_03" />
+  <script>
+    (function() {
+      var t = localStorage.getItem('algo_auth_token') || sessionStorage.getItem('algo_auth_token');
+      if (t) {
+        document.documentElement.classList.add('user-logged-in');
+      }
+    })();
+  </script>
   <script src="/static/lightweight-charts.js"></script>
 </head>
 <body>
@@ -668,6 +676,8 @@
         </div>
       </form>
     </div>
-  <script src="/static/app.js?v=20260908_02"></script>
+  </div>
+
+  <script src="/static/app.js?v=20260908_03"></script>
 </body>
 </html>

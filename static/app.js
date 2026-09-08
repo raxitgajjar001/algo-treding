@@ -1584,24 +1584,31 @@ function showLoginScreen() {
 async function checkAuthentication() {
   const token = localStorage.getItem('algo_auth_token') || sessionStorage.getItem('algo_auth_token');
   if (token) {
+    document.documentElement.classList.add('user-logged-in');
+    showDashboardScreen();
+    const username = localStorage.getItem('algo_auth_user') || sessionStorage.getItem('algo_auth_user') || 'Raxit';
+    const userBadge = document.getElementById('user-badge');
+    if (userBadge) userBadge.textContent = `👤 ${username}`;
+    startDashboardLoops();
+
+    // Verify token in background without blocking UI
     try {
       const res = await fetch('/api/auth/check?token=' + encodeURIComponent(token));
       const data = await res.json();
-      if (data.authenticated) {
-        showDashboardScreen();
-        const username = localStorage.getItem('algo_auth_user') || sessionStorage.getItem('algo_auth_user') || 'Raxit';
-        const userBadge = document.getElementById('user-badge');
-        if (userBadge) userBadge.textContent = `👤 ${username}`;
-        startDashboardLoops();
-        return true;
+      if (!data.authenticated) {
+        // Token was explicitly invalidated
+        document.documentElement.classList.remove('user-logged-in');
+        localStorage.removeItem('algo_auth_token');
+        sessionStorage.removeItem('algo_auth_token');
+        showLoginScreen();
+        return false;
       }
     } catch (e) {
-      // If temporary network hiccup, remain logged in
-      showDashboardScreen();
-      startDashboardLoops();
-      return true;
+      // Keep dashboard open during temporary network fluctuations
     }
+    return true;
   }
+  document.documentElement.classList.remove('user-logged-in');
   showLoginScreen();
   return false;
 }
@@ -1942,6 +1949,7 @@ async function logoutUser() {
   sessionStorage.removeItem('algo_auth_user');
   localStorage.removeItem('algo_auth_token');
   localStorage.removeItem('algo_auth_user');
+  document.documentElement.classList.remove('user-logged-in');
   
   showLoginScreen();
 

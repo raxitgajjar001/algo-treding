@@ -201,7 +201,7 @@ class TradingEngine:
                 symbol=symbol,
                 security_id=best_opp["security_id"],
                 qty=qty,
-                order_type="MARKET",
+                order_type="LIMIT",
                 product=product,
                 limit_price=best_opp["current_price"],
                 exchange="NSE",
@@ -273,7 +273,8 @@ class TradingEngine:
             symbol=trade["symbol"],
             security_id=trade["security_id"],
             qty=qty,
-            order_type="MARKET",
+            order_type="LIMIT",
+            limit_price=float(exit_price),
             product="INTRADAY"
         )
 
@@ -294,6 +295,12 @@ class TradingEngine:
 
         self.trade_history.insert(0, completed_trade)
         self.daily_realized_pnl += pnl
+
+        # Track consecutive losses for 3-loss circuit breaker
+        if pnl < 0:
+            self.risk_manager.consecutive_losses = getattr(self.risk_manager, "consecutive_losses", 0) + 1
+        else:
+            self.risk_manager.consecutive_losses = 0
 
         log_level = "SUCCESS" if pnl >= 0 else "WARNING"
         action_verb = "EXIT"

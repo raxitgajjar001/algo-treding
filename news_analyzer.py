@@ -220,7 +220,10 @@ def fetch_rss_news() -> List[Dict]:
             history[title_hash] = now - (len(unique_articles) * 120)
 
         pub_time = history[title_hash]
-        clock_str = time.strftime('%I:%M %p', time.localtime(pub_time))
+        import datetime
+        ist_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+        dt_ist = datetime.datetime.fromtimestamp(pub_time, tz=ist_tz)
+        clock_str = dt_ist.strftime('%I:%M %p IST')
         rel_str = get_relative_time_str(pub_time, now)
 
         unique_articles.append({

@@ -17,19 +17,27 @@ class RiskManager:
         if self.emergency_halt:
             return False, "Emergency Halt is active."
 
-        # 1. Check Max Daily Loss Limit
-        max_daily_loss = float(account.get("max_loss_limit", settings.get("max_daily_loss", 2500.0)))
-        if daily_realized_pnl <= -abs(max_daily_loss):
-            return False, f"Daily loss limit reached (₹{abs(daily_realized_pnl)} / ₹{max_daily_loss}). Trading stopped for today to protect capital."
+        # 1. Check Max Daily Portfolio Loss Limit (Strict 2% Circuit Breaker)
+        total_capital = float(account.get("total_capital", 100000.0))
+        two_pct_loss = total_capital * 0.02
+        configured_loss = float(account.get("max_loss_limit", settings.get("max_daily_loss", 2000.0)))
+        max_daily_loss = min(two_pct_loss, configured_loss) if configured_loss > 0 else two_pct_loss
 
-        # 2. Check Max Concurrent Trades for this account
+        if daily_realized_pnl <= -abs(max_daily_loss):
+            self.emergency_halt = True
+            return False, f"Daily portfolio loss exceeded 2% risk circuit breaker (-₹{abs(daily_realized_pnl):,.2f} / ₹{max_daily_loss:,.2f}). Trading stopped for today to protect capital."
+
+        # 2. Check 3 Consecutive Losses Limit
+        if getattr(self, "consecutive_losses", 0) >= 3:
+            return False, "3 consecutive losing trades reached today. Engine halted to preserve capital."
+
+        # 3. Check Max Concurrent Trades for this account
         acc_open = [t for t in open_trades if t.get("account_id") == account["id"]]
         max_trades = settings.get("max_concurrent_trades", 5)
         if len(acc_open) >= max_trades:
             return False, f"Account {account['name']} reached max concurrent trades limit ({max_trades})."
 
-        # 3. Strict Capital Allocation Pool Check (e.g. 25% across ALL active trades)
-        total_capital = float(account.get("total_capital", 100000.0))
+        # 4. Strict Capital Allocation Pool Check (e.g. 25% across ALL active trades)
         alloc_pct = float(account.get("capital_allocation_pct", settings.get("capital_allocation_pct", 25.0)))
         max_pool = total_capital * (alloc_pct / 100.0)
 
@@ -102,6 +110,13 @@ class RiskManager:
             peak_price = max(float(trade.get("peak_price", entry_price)), current_price)
             peak_gain_pct = ((peak_price - entry_price) / entry_price) * 100.0
 
+            risk_unit = abs(entry_price - base_sl)
+
+            # 0. Reach 1:1 Risk-Reward -> Move SL to Cost (Break-even guarantee)
+            if risk_unit > 0 and peak_price >= (entry_price + risk_unit):
+                cost_protected_sl = round(entry_price * 1.001, 2)
+                current_trailing_sl = max(current_trailing_sl, cost_protected_sl)
+
             # 1. Reach +1.0% profit -> Move SL to Cost + 0.2% (Risk Free Guarantee)
             if peak_gain_pct >= 1.0:
                 cost_protected_sl = round(entry_price * 1.002, 2)
@@ -125,6 +140,13 @@ class RiskManager:
             current_trailing_sl = float(trade.get("trailing_sl_price", base_sl))
             trough_price = min(float(trade.get("peak_price", entry_price)), current_price)
             down_gain_pct = ((entry_price - trough_price) / entry_price) * 100.0
+
+            risk_unit = abs(base_sl - entry_price)
+
+            # 0. Reach 1:1 Risk-Reward -> Move SL to Cost (Break-even guarantee)
+            if risk_unit > 0 and trough_price <= (entry_price - risk_unit):
+                cost_protected_sl = round(entry_price * 0.999, 2)
+                current_trailing_sl = min(current_trailing_sl, cost_protected_sl)
 
             # 1. Down +1.0% profit -> Move SL down to Cost - 0.2% (Risk Free Short)
             if down_gain_pct >= 1.0:

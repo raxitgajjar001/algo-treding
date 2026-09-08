@@ -1369,3 +1369,14 @@ tr:hover {
   display: inline-block;
   animation: spin-anim 0.7s linear infinite;
 }
+
+/* Zero-flicker instant login state preservation on page reload */
+html.user-logged-in #lamp-login-screen {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+html.user-logged-in #app-dashboard {
+  display: block !important;
+  visibility: visible !important;
+}

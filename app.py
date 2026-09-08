@@ -423,14 +423,49 @@ def emergency_kill():
 import requests
 
 YAHOO_SYMBOL_MAP = {
+    # Major Benchmark Indices
     "NIFTY": "^NSEI",
+    "NIFTY 50": "^NSEI",
     "BANKNIFTY": "^NSEBANK",
+    "NIFTY BANK": "^NSEBANK",
     "SENSEX": "^BSESN",
+    "BSE SENSEX": "^BSESN",
     "FINNIFTY": "NIFTY_FIN_SERVICE.NS",
+    "NIFTY FINANCIAL SERVICES": "NIFTY_FIN_SERVICE.NS",
+    "MIDCPNIFTY": "^NSEMDCP50",
+    "NIFTY MIDCAP SELECT": "^NSEMDCP50",
+    "NIFTYNEXT50": "^NSMIDCP",
+    "NIFTY NEXT 50": "^NSMIDCP",
+    "INDIAVIX": "^INDIAVIX",
+    "INDIA VIX": "^INDIAVIX",
+
+    # Sectoral Indices
+    "NIFTY IT": "^CNXIT",
+    "NIFTY AUTO": "^CNXAUTO",
+    "NIFTY PHARMA": "^CNXPHARMA",
+    "NIFTY FMCG": "^CNXFMCG",
+    "NIFTY METAL": "^CNXMETAL",
+    "NIFTY REALTY": "^CNXREALTY",
+    "NIFTY ENERGY": "^CNXENERGY",
+    "NIFTY PSU BANK": "^CNXPSUBANK",
+    "NIFTY PVT BANK": "NIFTY_PVT_BANK.NS",
+    "NIFTY INFRA": "^CNXINFRA",
+    "NIFTY COMMODITIES": "^CNXCOMMODITIES",
+    "NIFTY MEDIA": "^CNXMEDIA",
+
+    # Market Cap Indices
+    "NIFTY 100": "^CNX100",
+    "NIFTY 200": "^CNX200",
+    "NIFTY 500": "^CRSLDX",
+    "NIFTY MIDCAP 150": "NIFTY_MIDCAP_150.NS",
+    "NIFTY SMALLCAP 100": "NIFTY_SMLCAP_100.NS",
+    "NIFTY SMALLCAP 250": "NIFTY_SMLCAP_250.NS",
+
+    # Key Equities
     "RELIANCE": "RELIANCE.NS",
     "HDFCBANK": "HDFCBANK.NS",
     "SBIN": "SBIN.NS",
-    "TATAMOTORS": "TMPV.BO",
+    "TATAMOTORS": "TATAMOTORS.NS",
     "TCS": "TCS.NS",
     "ICICIBANK": "ICICIBANK.NS",
     "INFY": "INFY.NS",
@@ -438,7 +473,13 @@ YAHOO_SYMBOL_MAP = {
     "LT": "LT.NS",
     "BAJFINANCE": "BAJFINANCE.NS",
     "MARUTI": "MARUTI.NS",
-    "ITC": "ITC.NS"
+    "ITC": "ITC.NS",
+    "AXISBANK": "AXISBANK.NS",
+    "KOTAKBANK": "KOTAKBANK.NS",
+    "HINDUNILVR": "HINDUNILVR.NS",
+    "SUNPHARMA": "SUNPHARMA.NS",
+    "WIPRO": "WIPRO.NS",
+    "TATASTEEL": "TATASTEEL.NS"
 }
 
 CHART_CACHE = {}
@@ -464,6 +505,47 @@ def refresh_market_data():
         "timestamp": time.time()
     }
 
+@app.get("/api/market/depth/{symbol}")
+def get_market_depth(symbol: str):
+    sym = symbol.upper().replace("NSE:", "").replace("BSE:", "").strip()
+    base_price = 1500.0
+    from scanner import WATCHLIST, INDEX_CATEGORIES
+    for w in WATCHLIST:
+        if w["symbol"] == sym:
+            base_price = float(w["base_price"])
+            break
+    else:
+        for cat_list in INDEX_CATEGORIES.values():
+            for item in cat_list:
+                if item["symbol"] == sym:
+                    base_price = float(item["base_price"])
+                    break
+
+    tick_size = 0.05 if base_price > 100 else 0.01
+    spread = max(tick_size, round(base_price * 0.0003, 2))
+    best_bid = round(base_price - (spread / 2.0), 2)
+    best_ask = round(best_bid + spread, 2)
+
+    bids = []
+    asks = []
+    for i in range(5):
+        bid_p = round(best_bid - (i * tick_size), 2)
+        ask_p = round(best_ask + (i * tick_size), 2)
+        bids.append({"orders": 14 - (i * 2), "qty": (600 + (i * 240)), "price": bid_p})
+        asks.append({"orders": 15 - (i * 2), "qty": (550 + (i * 260)), "price": ask_p})
+
+    return {
+        "symbol": sym,
+        "ltp": base_price,
+        "spread": spread,
+        "spread_pct": round((spread / base_price) * 100.0, 4),
+        "total_buy_qty": sum(b["qty"] for b in bids),
+        "total_sell_qty": sum(a["qty"] for a in asks),
+        "bids": bids,
+        "asks": asks,
+        "timestamp": time.time()
+    }
+
 @app.get("/api/market/chart/{symbol}")
 def get_market_chart(symbol: str, interval: str = "5m"):
     sym = symbol.upper().replace("NSE:", "").replace("BSE:", "").strip()
@@ -485,11 +567,18 @@ def get_market_chart(symbol: str, interval: str = "5m"):
     if cached and (now - cached["time"] < 15):
         return cached["data"]
 
-    # Try Yahoo Finance for major stocks if available
+    # Check if this is an F&O Option Contract
+    is_option = ("_CE" in sym) or ("_PE" in sym) or ("_CALL_" in sym) or ("_PUT_" in sym)
+
+    # Try Yahoo Finance for real Indian market candles
     ticker = YAHOO_SYMBOL_MAP.get(sym)
+    if not ticker and not is_option:
+        # Fallback check with .NS
+        ticker = f"{sym}.NS"
+
     if ticker:
         url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval={tf_interval}&range={tf_range}"
-        headers = {"User-Agent": "Mozilla/5.0"}
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
         try:
             r = requests.get(url, headers=headers, timeout=4)
             if r.status_code == 200:
@@ -508,7 +597,8 @@ def get_market_chart(symbol: str, interval: str = "5m"):
                     c = quotes["close"][i]
                     v = quotes.get("volume", [0]*len(timestamps))[i] or 0
                     if None not in (o, h, l, c):
-                        candle_time = time.strftime("%Y-%m-%d", time.localtime(timestamps[i])) if is_daily else (timestamps[i] + 19800)
+                        # Strict epoch seconds: Lightweight Charts converts to local browser IST automatically!
+                        candle_time = time.strftime("%Y-%m-%d", time.gmtime(timestamps[i])) if is_daily else int(timestamps[i])
                         candles.append({
                             "time": candle_time,
                             "open": round(o, 2),
@@ -540,7 +630,7 @@ def get_market_chart(symbol: str, interval: str = "5m"):
     from scanner import WATCHLIST, INDEX_CATEGORIES
     for w in WATCHLIST:
         if w["symbol"] == sym:
-            base = w["base_price"]
+            base = float(w["base_price"])
             break
     else:
         for cat_list in INDEX_CATEGORIES.values():
@@ -552,17 +642,17 @@ def get_market_chart(symbol: str, interval: str = "5m"):
                 continue
             break
     
-    # Generate smooth, high-fidelity candles for active symbol
+    # Generate high-fidelity candles using exact UTC epoch seconds
     candles = []
     volumes = []
-    p = base * 0.992
+    p = base * 0.994
     cur_t = int(now) - (60 * 300)
     for i in range(60):
-        t = cur_t + (i * 300) + 19800
-        delta = random.uniform(-0.0025, 0.0027) * base
+        t = cur_t + (i * 300)
+        delta = random.uniform(-0.002, 0.0022) * base
         c = p + delta
-        h = max(p, c) + abs(random.uniform(0.0005, 0.002) * base)
-        l = min(p, c) - abs(random.uniform(0.0005, 0.002) * base)
+        h = max(p, c) + abs(random.uniform(0.0003, 0.0015) * base)
+        l = min(p, c) - abs(random.uniform(0.0003, 0.0015) * base)
         v = random.randint(15000, 75000)
         candles.append({
             "time": t,
