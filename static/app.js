@@ -1642,40 +1642,33 @@ function showLoginScreen() {
 }
 
 async function checkAuthentication() {
-  let token = localStorage.getItem('algo_auth_token') || sessionStorage.getItem('algo_auth_token');
-  if (!token && (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost')) {
-    token = 'sess-raxit-master-2026';
-    localStorage.setItem('algo_auth_token', token);
-    localStorage.setItem('algo_auth_user', 'Raxit@5001');
-  }
-
+  const token = localStorage.getItem('algo_auth_token') || sessionStorage.getItem('algo_auth_token');
   if (token) {
-    document.documentElement.classList.add('user-logged-in');
-    showDashboardScreen();
-    const username = localStorage.getItem('algo_auth_user') || sessionStorage.getItem('algo_auth_user') || 'Raxit@5001';
-    const userBadge = document.getElementById('user-badge');
-    if (userBadge) userBadge.textContent = `👤 ${username}`;
-    startDashboardLoops();
-
-    // Verify token in background without blocking UI
     try {
       const res = await fetch('/api/auth/check?token=' + encodeURIComponent(token));
       const data = await res.json();
-      if (!data.authenticated) {
-        if (window.location.hostname !== '127.0.0.1' && window.location.hostname !== 'localhost') {
-          document.documentElement.classList.remove('user-logged-in');
-          localStorage.removeItem('algo_auth_token');
-          sessionStorage.removeItem('algo_auth_token');
-          showLoginScreen();
-          return false;
-        }
+      if (data && data.authenticated) {
+        document.documentElement.classList.add('user-logged-in');
+        showDashboardScreen();
+        const username = localStorage.getItem('algo_auth_user') || sessionStorage.getItem('algo_auth_user') || 'Raxit@5001';
+        const userBadge = document.getElementById('user-badge');
+        if (userBadge) userBadge.textContent = `👤 ${username}`;
+        startDashboardLoops();
+        return true;
       }
     } catch (e) {
-      // Keep dashboard open during temporary network fluctuations
+      // If server is temporarily restarting, keep session valid
+      document.documentElement.classList.add('user-logged-in');
+      showDashboardScreen();
+      startDashboardLoops();
+      return true;
     }
-    return true;
   }
+
+  // Unauthenticated: Show lamp login screen
   document.documentElement.classList.remove('user-logged-in');
+  localStorage.removeItem('algo_auth_token');
+  sessionStorage.removeItem('algo_auth_token');
   showLoginScreen();
   return false;
 }
