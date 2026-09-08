@@ -51,10 +51,12 @@ class RiskManager:
         self,
         account: Dict,
         entry_price: float,
-        open_trades: List[Dict] = None
+        open_trades: List[Dict] = None,
+        lot_size: int = 25
     ) -> Tuple[int, float]:
         """
         Returns: (quantity, allocated_capital_rupees)
+        Strictly trades in standardized F&O LOT SIZES (e.g. 25, 15, 10).
         Strictly divides the user's chosen capital allocation pool (e.g. 25%)
         across active trades so total deployed capital NEVER exceeds the 25% pool.
         """
@@ -76,94 +78,71 @@ class RiskManager:
         if remaining_pool <= 0:
             return 0, 0.0
 
-        max_trades = settings.get("max_concurrent_trades", 5)
+        # Maintain disciplined focus: Maximum 1 to 2 concurrent high-quality F&O trades
+        max_trades = min(2, int(settings.get("max_concurrent_trades", 2)))
         remaining_slots = max(1, max_trades - len(acc_open))
         trade_budget = remaining_pool / remaining_slots
 
-        qty = int(trade_budget // entry_price)
-        if qty < 1 and remaining_pool >= entry_price:
-            qty = 1
+        # Standardized F&O Lot sizing
+        actual_lot = max(1, int(lot_size))
+        single_lot_cost = entry_price * actual_lot
 
-        # Hard cap: Never allow quantity to exceed remaining allocation pool
-        if (qty * entry_price) > remaining_pool:
-            qty = int(remaining_pool // entry_price)
-
-        if qty <= 0:
+        if single_lot_cost <= 0:
             return 0, 0.0
 
+        num_lots = int(trade_budget // single_lot_cost)
+        if num_lots < 1 and remaining_pool >= single_lot_cost:
+            num_lots = 1
+
+        # Hard cap: Never allow quantity to exceed remaining 25% allocation pool
+        if (num_lots * single_lot_cost) > remaining_pool:
+            num_lots = int(remaining_pool // single_lot_cost)
+
+        if num_lots <= 0:
+            return 0, 0.0
+
+        qty = num_lots * actual_lot
         actual_allocated = round(qty * entry_price, 2)
         return qty, actual_allocated
 
     def update_trailing_stoploss(self, trade: Dict, current_price: float) -> Tuple[float, float]:
         """
-        Dynamically adjusts stop loss as trade moves into profit for BOTH directions:
-        - LONG (BUY): Trails upward as price rises to lock in profits.
-        - SHORT (SELL): Trails downward as price falls to lock in downward profits.
+        Dynamically adjusts stop loss as trade moves into profit:
+        - Locks in Break-Even + Brokerage & GST (₹48.50) as soon as trade moves into profit
+        - Trails upward as price rises to lock in profits
         """
         direction = trade.get("direction", "BUY").upper()
         entry_price = float(trade["entry_price"])
-        qty = int(trade.get("qty", 1))
+        qty = max(1, int(trade.get("qty", 1)))
+        base_sl = float(trade.get("stoploss_price", entry_price * 0.915))
+        current_trailing_sl = float(trade.get("trailing_sl_price", base_sl))
+        peak_price = max(float(trade.get("peak_price", entry_price)), current_price)
+        peak_gain_pct = ((peak_price - entry_price) / entry_price) * 100.0
 
-        if direction in ["BUY", "BUY_CALL", "LONG"]:
-            base_sl = float(trade.get("stoploss_price", entry_price * 0.991))
-            current_trailing_sl = float(trade.get("trailing_sl_price", base_sl))
-            peak_price = max(float(trade.get("peak_price", entry_price)), current_price)
-            peak_gain_pct = ((peak_price - entry_price) / entry_price) * 100.0
+        # Break-Even point covering ₹48.50 brokerage + GST
+        brokerage_pts = round(48.50 / qty, 2)
+        break_even_sl = round(entry_price + brokerage_pts + 0.20, 2)
 
-            risk_unit = abs(entry_price - base_sl)
+        # 0. When profit reaches +5.0% or 1:1 risk-reward: Lock Break-Even including Brokerage & GST!
+        if peak_gain_pct >= 5.0 or (peak_price - entry_price) >= (entry_price - base_sl):
+            current_trailing_sl = max(current_trailing_sl, break_even_sl)
 
-            # 0. Reach 1:1 Risk-Reward -> Move SL to Cost (Break-even guarantee)
-            if risk_unit > 0 and peak_price >= (entry_price + risk_unit):
-                cost_protected_sl = round(entry_price * 1.001, 2)
-                current_trailing_sl = max(current_trailing_sl, cost_protected_sl)
+        # 1. Reach +10.0% profit -> Lock in at least +5% profit
+        if peak_gain_pct >= 10.0:
+            lock_5pct = round(entry_price * 1.05, 2)
+            current_trailing_sl = max(current_trailing_sl, lock_5pct)
 
-            # 1. Reach +1.0% profit -> Move SL to Cost + 0.2% (Risk Free Guarantee)
-            if peak_gain_pct >= 1.0:
-                cost_protected_sl = round(entry_price * 1.002, 2)
-                current_trailing_sl = max(current_trailing_sl, cost_protected_sl)
+        # 2. Reach +15.0% profit -> Lock in at least +10% profit
+        if peak_gain_pct >= 15.0:
+            lock_10pct = round(entry_price * 1.10, 2)
+            current_trailing_sl = max(current_trailing_sl, lock_10pct)
 
-            # 2. Reach +2.0% profit -> Lock in at least +1.2% profit
-            if peak_gain_pct >= 2.0:
-                lock_profit_sl = round(entry_price * 1.012, 2)
-                current_trailing_sl = max(current_trailing_sl, lock_profit_sl)
+        # 3. Super-runner (>+20%) -> Trail behind peak by 5%
+        if peak_gain_pct >= 20.0:
+            trail_sl = round(peak_price * 0.95, 2)
+            current_trailing_sl = max(current_trailing_sl, trail_sl)
 
-            # 3. Super-runner (>+3%) -> Trail behind peak by 1.0%
-            if peak_gain_pct >= 3.0:
-                trail_sl = round(peak_price * 0.99, 2)
-                current_trailing_sl = max(current_trailing_sl, trail_sl)
-
-            return current_trailing_sl, peak_price
-
-        else:
-            # SHORT / SELL (Market going DOWN)
-            base_sl = float(trade.get("stoploss_price", entry_price * 1.009))
-            current_trailing_sl = float(trade.get("trailing_sl_price", base_sl))
-            trough_price = min(float(trade.get("peak_price", entry_price)), current_price)
-            down_gain_pct = ((entry_price - trough_price) / entry_price) * 100.0
-
-            risk_unit = abs(base_sl - entry_price)
-
-            # 0. Reach 1:1 Risk-Reward -> Move SL to Cost (Break-even guarantee)
-            if risk_unit > 0 and trough_price <= (entry_price - risk_unit):
-                cost_protected_sl = round(entry_price * 0.999, 2)
-                current_trailing_sl = min(current_trailing_sl, cost_protected_sl)
-
-            # 1. Down +1.0% profit -> Move SL down to Cost - 0.2% (Risk Free Short)
-            if down_gain_pct >= 1.0:
-                cost_protected_sl = round(entry_price * 0.998, 2)
-                current_trailing_sl = min(current_trailing_sl, cost_protected_sl)
-
-            # 2. Down +2.0% profit -> Lock in at least +1.2% short profit
-            if down_gain_pct >= 2.0:
-                lock_profit_sl = round(entry_price * 0.988, 2)
-                current_trailing_sl = min(current_trailing_sl, lock_profit_sl)
-
-            # 3. Deep dive (>+3%) -> Trail above trough by 1.0%
-            if down_gain_pct >= 3.0:
-                trail_sl = round(trough_price * 1.01, 2)
-                current_trailing_sl = min(current_trailing_sl, trail_sl)
-
-            return current_trailing_sl, trough_price
+        return current_trailing_sl, peak_price
 
     def should_exit_trade(self, trade: Dict, current_price: float) -> Tuple[bool, str]:
         """

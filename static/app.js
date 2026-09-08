@@ -934,31 +934,42 @@ async function fetchScanner() {
     const opps = await res.json();
     const tbody = document.getElementById('scanner-table-body');
     
-    tbody.innerHTML = opps.map(o => `
+    tbody.innerHTML = opps.map(o => {
+      const isCall = (o.symbol || '').includes('_CE');
+      const isPut = (o.symbol || '').includes('_PE');
+      const badgeClass = o.status.includes('CONFIRMED') ? 'badge-bullish' : 'badge-paper';
+      const statusText = o.status.includes('CONFIRMED') ? '🟢 સચોટ F&O સિગ્નલ' : '⏳ સ્કેનિંગ ચાલુ';
+
+      return `
       <tr style="cursor: pointer;" onclick="switchChart('${o.symbol}')" title="ચાર્ટ જોવા માટે અહીં ક્લિક કરો">
         <td>
           <strong>${o.symbol}</strong><br>
-          <small style="color: #64748B;">${o.name}</small>
+          <small style="color: #2563EB; font-weight: 700;">${o.underlying || 'F&O'} Option (Lot Size: ${o.lot_size || 25})</small>
         </td>
-        <td>₹${Number(o.current_price).toLocaleString('en-IN')}</td>
+        <td style="font-weight: 800; color: #0F172A;">₹${Number(o.current_price).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
         <td>
           <div class="score-bar"><div class="score-fill" style="width: ${o.score}%"></div></div>
-          <strong>${o.score}</strong>
+          <strong>${o.score}/100</strong>
         </td>
         <td>
-          <span class="${o.trade_type === 'SWING_DELIVERY' ? 'type-swing' : 'type-intraday'}">
-            ${o.trade_type === 'SWING_DELIVERY' ? '📦 2-7d Swing' : '⚡ Intraday'}
-          </span>
+          <span style="font-weight: 700; font-size: 0.78rem;">${o.direction_label || (isCall ? '🟢 BUY CALL' : '🔴 BUY PUT')}</span>
         </td>
-        <td>₹${o.target_price} (+${o.target_pct}%)</td>
-        <td>₹${o.stoploss_price} (-${o.stoploss_pct}%)</td>
         <td>
-          <span class="badge ${o.status === 'SIGNAL_READY' ? 'badge-bullish' : 'badge-paper'}">
-            ${o.status === 'SIGNAL_READY' ? '🟢 READY TO BUY' : '⏳ SCANNING'}
+          <span style="color: #15803D; font-weight: 800;">₹${o.target_price}</span><br>
+          <small style="color: #15803D; font-weight: 700;">Net: +₹${o.net_expected_profit || 0} (₹48.50 બાદ)</small>
+        </td>
+        <td>
+          <span style="color: #DC2626; font-weight: 700;">₹${o.stoploss_price}</span><br>
+          <small style="color: #64748B;">SL: -${o.stoploss_pts || 0} pts</small>
+        </td>
+        <td>
+          <span class="badge ${badgeClass}" style="font-size: 0.72rem; padding: 3px 8px;">
+            ${statusText}
           </span>
         </td>
       </tr>
-    `).join('');
+      `;
+    }).join('');
   } catch (err) {
     console.error('Error fetching scanner:', err);
   }
@@ -980,44 +991,61 @@ async function fetchActiveTrades() {
     }
 
     tbody.innerHTML = trades.map(t => {
-      const isLong = (t.direction || 'BUY').toUpperCase().includes('BUY') || (t.direction || '').toUpperCase().includes('LONG');
-      const dirBadge = isLong 
-        ? '<span class="badge-dir-long">🟢 BUY (Call/તેજી)</span>' 
-        : '<span class="badge-dir-short">🔴 SHORT (Put/મંદી)</span>';
+      const isCall = (t.symbol || '').includes('_CE');
+      const isPut = (t.symbol || '').includes('_PE');
+      const dirBadge = isCall 
+        ? '<span class="badge-dir-long">🟢 BUY CALL (તેજી)</span>' 
+        : (isPut ? '<span class="badge-dir-short">🔴 BUY PUT (મંદી)</span>' : '<span class="badge-dir-long">🟢 BUY</span>');
 
       const entryP = Number(t.entry_price || 0);
       const currP = Number(t.current_price || entryP);
-      const qty = parseInt(t.qty || 1, 10);
+      const qty = parseInt(t.qty || 25, 10);
+      const lotSize = parseInt(t.lot_size || (t.symbol.includes('BANKNIFTY') ? 15 : (t.symbol.includes('SENSEX') ? 10 : 25)), 10);
+      const lotsCount = Math.max(1, Math.floor(qty / lotSize));
       const investedCap = t.invested_capital ? Number(t.invested_capital) : (entryP * qty);
 
-      const pts = t.points_diff !== undefined ? Number(t.points_diff) : (isLong ? (currP - entryP) : (entryP - currP));
+      const pts = t.points_diff !== undefined ? Number(t.points_diff) : (currP - entryP);
       const ptsClass = pts >= 0 ? 'points-gain' : 'points-loss';
       const ptsSign = pts >= 0 ? '+' : '';
 
-      const pnl = Number(t.unrealized_pnl || 0);
-      const pnlClass = pnl >= 0 ? 'metric-value profit' : 'metric-value loss';
-      const pnlSign = pnl >= 0 ? '+' : '';
+      const grossPnl = t.gross_pnl !== undefined ? Number(t.gross_pnl) : (pts * qty);
+      const brokerage = Number(t.brokerage_charges || 48.50);
+      const netPnl = t.net_pnl !== undefined ? Number(t.net_pnl) : (grossPnl - brokerage);
+      const pnlClass = netPnl >= 0 ? 'metric-value profit' : 'metric-value loss';
+      const pnlSign = netPnl >= 0 ? '+' : '';
+      const grossSign = grossPnl >= 0 ? '+' : '';
 
       return `
         <tr>
           <td>
             <strong>${t.symbol}</strong><br>
-            <small style="color:#64748B;">${t.account_name || 'Demat Main'}</small>
+            <small style="color:#2563EB; font-weight:700;">${t.underlying || 'F&O'} Option (${t.account_name || 'Demat Main'})</small>
           </td>
           <td>
             ${dirBadge}<br>
             <span class="type-intraday" style="font-size:0.68rem; margin-top:2px; display:inline-block;">⚡ INTRADAY MIS</span>
           </td>
-          <td style="font-weight:700; color:#0F172A;">${qty}</td>
-          <td style="font-weight:800; color:#1E293B;">₹${entryP.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
-          <td style="font-weight:800; color:#0F172A;">₹${currP.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
           <td>
-            <span class="${ptsClass}">${ptsSign}${pts.toFixed(2)} pts</span>
+            <strong style="font-size:0.92rem; color:#0F172A;">${qty}</strong><br>
+            <span style="font-size:0.72rem; font-weight:700; color:#475569;">(${lotsCount} Lot)</span>
+          </td>
+          <td style="font-weight:800; color:#1E293B;">₹${entryP.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+          <td style="font-weight:800; color:#0F172A; font-size:0.92rem;">
+            ₹${currP.toLocaleString('en-IN', {minimumFractionDigits: 2})}
+          </td>
+          <td>
+            <span class="${ptsClass}" style="font-size:0.86rem; font-weight:800;">${ptsSign}${pts.toFixed(2)} pts</span>
           </td>
           <td style="font-weight:700; color:#475569;">₹${investedCap.toLocaleString('en-IN', {minimumFractionDigits: 0, maximumFractionDigits: 0})}</td>
-          <td class="${pnlClass}" style="font-size:0.88rem; font-weight:800;">
-            ${pnlSign}₹${pnl.toLocaleString('en-IN', {minimumFractionDigits: 2})}<br>
-            <small style="font-size:0.72rem; font-weight:700;">(${pnlSign}${t.pnl_pct || 0}%)</small>
+          <td>
+            <div class="${pnlClass}" style="font-size:0.92rem; font-weight:800;">
+              ${pnlSign}₹${netPnl.toLocaleString('en-IN', {minimumFractionDigits: 2})}
+              <small style="font-size:0.72rem; font-weight:700;">(${pnlSign}${t.pnl_pct || 0}%)</small>
+            </div>
+            <div style="font-size:0.68rem; color:#64748B; margin-top:2px; line-height:1.2;">
+              Gross: ${grossSign}₹${grossPnl.toFixed(2)}<br>
+              <span style="color:#D97706; font-weight:700;">બ્રોકરેજ+GST: -₹${brokerage.toFixed(2)}</span>
+            </div>
           </td>
           <td>
             <span style="color:#15803D; font-weight:700; font-size:0.75rem;">Tgt: ₹${t.target_price}</span><br>
