@@ -117,6 +117,71 @@ class AngelOneService:
             return {"status": "error", "message": str(e)}
         return {"status": "error", "message": "Funds data unavailable"}
 
+    def get_all_market_data(self) -> Dict[str, Dict[str, Any]]:
+        """Fetch all indices and key stocks in a SINGLE batch API call (zero rate limit issue)"""
+        if not self.is_authenticated or not self.client:
+            return {}
+        try:
+            exchange_tokens = {
+                "NSE": [
+                    "99926000",  # NIFTY 50
+                    "99926009",  # NIFTY BANK
+                    "99926037",  # NIFTY FIN SERVICE
+                    "99926074",  # NIFTY MID SELECT
+                    "2885",      # RELIANCE
+                    "1333",      # HDFCBANK
+                    "4963",      # ICICIBANK
+                    "3045",      # SBIN
+                    "11536",     # TCS
+                    "1594",      # INFY
+                    "99926004"   # INDIA VIX
+                ],
+                "BSE": [
+                    "1"          # SENSEX
+                ]
+            }
+            res = self.client.getMarketData("FULL", exchange_tokens)
+            if not res or not res.get("status") or not res.get("data"):
+                return {}
+            
+            symbol_mapping = {
+                "Nifty 50": "NIFTY",
+                "Nifty Bank": "BANKNIFTY",
+                "Nifty Fin Service": "FINNIFTY",
+                "NIFTY MID SELECT": "MIDCPNIFTY",
+                "BSX": "SENSEX",
+                "SENSEX": "SENSEX",
+                "RELIANCE-EQ": "RELIANCE",
+                "HDFCBANK-EQ": "HDFCBANK",
+                "ICICIBANK-EQ": "ICICIBANK",
+                "SBIN-EQ": "SBIN",
+                "TCS-EQ": "TCS",
+                "INFY-EQ": "INFY",
+                "India VIX": "INDIAVIX"
+            }
+            
+            result = {}
+            for item in res.get("data", {}).get("fetched", []):
+                sym_raw = item.get("tradingSymbol", "")
+                mapped = symbol_mapping.get(sym_raw)
+                if mapped:
+                    ltp = float(item.get("ltp", 0.0))
+                    close = float(item.get("close", ltp))
+                    pct = float(item.get("percentChange", 0.0))
+                    if pct == 0.0 and close > 0 and ltp > 0:
+                        pct = round(((ltp - close) / close) * 100.0, 2)
+                    result[mapped] = {
+                        "ltp": round(ltp, 2),
+                        "change_pct": round(pct, 2),
+                        "open": float(item.get("open", 0.0)),
+                        "high": float(item.get("high", 0.0)),
+                        "low": float(item.get("low", 0.0)),
+                        "close": close
+                    }
+            return result
+        except Exception:
+            return {}
+
     def get_ltp(self, symbol: str) -> Optional[Dict[str, Any]]:
         if not self.is_authenticated or not self.client:
             return None
@@ -156,8 +221,8 @@ class AngelOneService:
         cache_key = f"{symbol.upper()}_{interval}"
         now_ts = time.time()
         cached = self.candle_cache.get(cache_key)
-        # 45 second cache to avoid Angel One candle rate limits completely
-        if cached and (now_ts - cached["time"] < 45.0):
+        # 30 second cache to avoid Angel One candle rate limits completely
+        if cached and (now_ts - cached["time"] < 30.0):
             return cached["data"]
 
         tokens = {
@@ -165,6 +230,7 @@ class AngelOneService:
             "BANKNIFTY": ("NSE", "99926009"),
             "FINNIFTY": ("NSE", "99926037"),
             "MIDCPNIFTY": ("NSE", "99926074"),
+            "SENSEX": ("BSE", "99919000"),
             "RELIANCE": ("NSE", "2885"),
             "HDFCBANK": ("NSE", "1333"),
             "ICICIBANK": ("NSE", "4963"),
@@ -201,9 +267,9 @@ class AngelOneService:
             "todate": to_str
         }
 
-        # Rate limiter: minimum 1.5s between calls to prevent rate limits
-        if (now_ts - self.last_candle_req) < 1.5:
-            time.sleep(1.5 - (now_ts - self.last_candle_req))
+        # Rate limiter: minimum 1.2s between calls to prevent rate limits
+        if (now_ts - self.last_candle_req) < 1.2:
+            time.sleep(1.2 - (now_ts - self.last_candle_req))
 
         try:
             self.last_candle_req = time.time()

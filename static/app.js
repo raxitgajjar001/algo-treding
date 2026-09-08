@@ -262,7 +262,14 @@ function renderChartData(isBackground = false) {
   }
 
   if (!isBackground) {
-    nativeChart.timeScale().fitContent();
+    const totalBars = allCandles.length;
+    if (totalBars > 0) {
+      nativeChart.timeScale().setVisibleLogicalRange({
+        from: Math.max(0, totalBars - 60),
+        to: totalBars + 6
+      });
+    }
+    nativeChart.timeScale().scrollToRealTime();
   }
 }
 
@@ -332,7 +339,10 @@ function initNativeChart(symbol = 'NIFTY') {
     timeScale: {
       borderColor: '#CBD5E1',
       timeVisible: true,
-      secondsVisible: false
+      secondsVisible: false,
+      barSpacing: 10,
+      minBarSpacing: 4,
+      rightOffset: 8
     }
   });
 
@@ -608,24 +618,8 @@ async function fetchLiveTicks() {
       let lastCandle = allCandles[allCandles.length - 1];
 
       if (typeof lastCandle.time === 'number') {
-        if (bucketTime > lastCandle.time) {
-          // New candle for next timeframe interval
-          const newCandle = {
-            time: bucketTime,
-            open: newClose,
-            high: newClose,
-            low: newClose,
-            close: newClose
-          };
-          allCandles.push(newCandle);
-          currentCandle = newCandle;
-          if (indicatorsState.chartType === 'candles' && candleSeries) {
-            candleSeries.update(newCandle);
-          } else if (indicatorsState.chartType === 'line' && areaSeries) {
-            areaSeries.update({ time: newCandle.time, value: newClose });
-          }
-        } else {
-          // Update active candle
+        if (bucketTime === lastCandle.time) {
+          // Update active candle in-place
           lastCandle.close = newClose;
           if (newClose > lastCandle.high) lastCandle.high = newClose;
           if (newClose < lastCandle.low) lastCandle.low = newClose;
@@ -634,6 +628,27 @@ async function fetchLiveTicks() {
             candleSeries.update(lastCandle);
           } else if (indicatorsState.chartType === 'line' && areaSeries) {
             areaSeries.update({ time: lastCandle.time, value: newClose });
+          }
+        } else if (bucketTime > lastCandle.time) {
+          if ((bucketTime - lastCandle.time) <= tfSec * 2) {
+            // New continuous candle for next timeframe interval
+            const newCandle = {
+              time: bucketTime,
+              open: lastCandle.close,
+              high: Math.max(lastCandle.close, newClose),
+              low: Math.min(lastCandle.close, newClose),
+              close: newClose
+            };
+            allCandles.push(newCandle);
+            currentCandle = newCandle;
+            if (indicatorsState.chartType === 'candles' && candleSeries) {
+              candleSeries.update(newCandle);
+            } else if (indicatorsState.chartType === 'line' && areaSeries) {
+              areaSeries.update({ time: newCandle.time, value: newClose });
+            }
+          } else {
+            // Gap detected -> safely refresh chart data
+            loadChartData(currentChartSymbol, currentTimeframe, true);
           }
         }
       } else {
