@@ -381,7 +381,8 @@ html, body {
 /* Tables */
 .table-wrapper {
   overflow-x: auto;
-  max-height: 400px;
+  overflow-y: visible;
+  max-height: none;
   width: 100%;
   max-width: 100%;
   min-width: 0;

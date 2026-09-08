@@ -648,10 +648,10 @@ function updateScalperDisplay(ticks) {
 
     const totalQty = (lotSizes[currentScalpSymbol] || 25) * scalpParams.lots;
     if (ceLabelElem) {
-      ceLabelElem.textContent = `${currentScalpSymbol} ${atmStrike} CE @ ~₹${estPrem} | ${scalpParams.lots} Lot (${totalQty})`;
+      ceLabelElem.textContent = `${currentScalpSymbol} ${atmStrike} CE (ભાવ: ₹${estPrem}) | ${scalpParams.lots} Lot (${totalQty} Qty)`;
     }
     if (peLabelElem) {
-      peLabelElem.textContent = `${currentScalpSymbol} ${atmStrike} PE @ ~₹${estPrem} | ${scalpParams.lots} Lot (${totalQty})`;
+      peLabelElem.textContent = `${currentScalpSymbol} ${atmStrike} PE (ભાવ: ₹${estPrem}) | ${scalpParams.lots} Lot (${totalQty} Qty)`;
     }
   }
 
@@ -1280,6 +1280,8 @@ function renderIndexCategoryItems(catKey) {
       minimumFractionDigits: (item.base_price < 500 ? 2 : 2)
     });
 
+    const currPrefix = (item.symbol === 'INDIAVIX') ? '' : '₹';
+
     return `
       <div class="index-card ${isSelected ? 'selected' : ''}" onclick="switchChart('${item.symbol}')" title="ચાર્ટ જોવા ક્લિક કરો">
         <div class="index-card-header">
@@ -1288,7 +1290,7 @@ function renderIndexCategoryItems(catKey) {
         </div>
         <div class="index-card-subtitle">${item.exchange || 'NSE'}: ${item.symbol}</div>
         <div class="index-card-body">
-          <div class="index-card-price" id="cat-price-${item.symbol}">₹${priceFormatted}</div>
+          <div class="index-card-price" id="cat-price-${item.symbol}">${currPrefix}${priceFormatted}</div>
           <div class="index-card-chg ${chgClass}" id="cat-chg-${item.symbol}">${chgText}</div>
         </div>
       </div>

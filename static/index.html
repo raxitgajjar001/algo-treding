@@ -65,23 +65,23 @@
 
   <div class="indian-market-ribbon" style="display: flex; gap: 12px; overflow-x: auto; margin-bottom: 18px; padding: 10px 14px; background: #FFFFFF; border: 1.5px solid #CBD5E1; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
     <div class="index-pill" onclick="switchChart('NSE:NIFTY')" style="cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 4px 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px;">
-      <span style="font-weight: 800; color: #0F172A; font-size: 0.85rem;">🇮🇳 NIFTY 50</span>
+      <span style="font-weight: 800; color: #0F172A; font-size: 0.85rem;">📊 NIFTY 50</span>
       <span id="ticker-nifty" style="font-weight: 700; color: #15803D; font-size: 0.85rem;">--</span>
     </div>
     <div class="index-pill" onclick="switchChart('NSE:BANKNIFTY')" style="cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 4px 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px;">
-      <span style="font-weight: 800; color: #0F172A; font-size: 0.85rem;">🇮🇳 BANK NIFTY</span>
+      <span style="font-weight: 800; color: #0F172A; font-size: 0.85rem;">🏦 BANK NIFTY</span>
       <span id="ticker-banknifty" style="font-weight: 700; color: #15803D; font-size: 0.85rem;">--</span>
     </div>
     <div class="index-pill" onclick="switchChart('BSE:SENSEX')" style="cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 4px 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px;">
-      <span style="font-weight: 800; color: #0F172A; font-size: 0.85rem;">🇮🇳 SENSEX</span>
+      <span style="font-weight: 800; color: #0F172A; font-size: 0.85rem;">🏛️ SENSEX</span>
       <span id="ticker-sensex" style="font-weight: 700; color: #15803D; font-size: 0.85rem;">--</span>
     </div>
     <div class="index-pill" onclick="switchChart('NSE:FINNIFTY')" style="cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 4px 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px;">
-      <span style="font-weight: 800; color: #0F172A; font-size: 0.85rem;">🇮🇳 FIN NIFTY</span>
+      <span style="font-weight: 800; color: #0F172A; font-size: 0.85rem;">⚡ FIN NIFTY</span>
       <span id="ticker-finnifty" style="font-weight: 700; color: #15803D; font-size: 0.85rem;">--</span>
     </div>
     <div class="index-pill" onclick="switchChart('NSE:INDIAVIX')" style="cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 4px 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px;">
-      <span style="font-weight: 800; color: #0F172A; font-size: 0.85rem;">🇮🇳 INDIA VIX</span>
+      <span style="font-weight: 800; color: #0F172A; font-size: 0.85rem;">🔥 INDIA VIX</span>
       <span id="ticker-vix" style="font-weight: 700; color: #B45309; font-size: 0.85rem;">--</span>
     </div>
   </div>
@@ -217,16 +217,16 @@
       <!-- Index Selector Tabs -->
       <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px;">
         <button id="scalp-sym-NIFTY" class="btn btn-primary" style="padding: 6px 14px; font-size: 0.82rem; font-weight: 800;" onclick="selectScalpSymbol('NIFTY')">
-          🇮🇳 NIFTY 50 (ATM)
+          📊 NIFTY 50 (ATM)
         </button>
         <button id="scalp-sym-BANKNIFTY" class="btn btn-secondary" style="padding: 6px 14px; font-size: 0.82rem; font-weight: 800;" onclick="selectScalpSymbol('BANKNIFTY')">
-          🇮🇳 BANK NIFTY (ATM)
+          🏦 BANK NIFTY (ATM)
         </button>
         <button id="scalp-sym-SENSEX" class="btn btn-secondary" style="padding: 6px 14px; font-size: 0.82rem; font-weight: 800;" onclick="selectScalpSymbol('SENSEX')">
-          🇮🇳 SENSEX (ATM)
+          🏛️ SENSEX (ATM)
         </button>
         <button id="scalp-sym-FINNIFTY" class="btn btn-secondary" style="padding: 6px 14px; font-size: 0.82rem; font-weight: 800;" onclick="selectScalpSymbol('FINNIFTY')">
-          🇮🇳 FIN NIFTY (ATM)
+          ⚡ FIN NIFTY (ATM)
         </button>
       </div>
 
@@ -268,12 +268,12 @@
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
         <button id="btn-scalp-buy-ce" class="btn" style="background: #16A34A; color: #FFFFFF; padding: 14px; font-size: 1.05rem; font-weight: 900; border-radius: 8px; border: none; cursor: pointer; box-shadow: 0 4px 6px -1px rgba(22, 163, 74, 0.3); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;" onclick="executeScalpOrder('CE')">
           <span>🟢 BUY CALL (ATM CE)</span>
-          <span id="btn-label-ce-strike" style="font-size: 0.75rem; font-weight: 600; opacity: 0.9;">NIFTY 23650 CE @ ~₹115 | 1 Lot (75)</span>
+          <span id="btn-label-ce-strike" style="font-size: 0.75rem; font-weight: 600; opacity: 0.9;">NIFTY 23650 CE (ભાવ: ₹115) | 1 Lot (75 Qty)</span>
         </button>
 
         <button id="btn-scalp-buy-pe" class="btn" style="background: #DC2626; color: #FFFFFF; padding: 14px; font-size: 1.05rem; font-weight: 900; border-radius: 8px; border: none; cursor: pointer; box-shadow: 0 4px 6px -1px rgba(220, 38, 38, 0.3); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;" onclick="executeScalpOrder('PE')">
           <span>🔴 BUY PUT (ATM PE)</span>
-          <span id="btn-label-pe-strike" style="font-size: 0.75rem; font-weight: 600; opacity: 0.9;">NIFTY 23650 PE @ ~₹115 | 1 Lot (75)</span>
+          <span id="btn-label-pe-strike" style="font-size: 0.75rem; font-weight: 600; opacity: 0.9;">NIFTY 23650 PE (ભાવ: ₹115) | 1 Lot (75 Qty)</span>
         </button>
       </div>
 
