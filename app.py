@@ -75,6 +75,46 @@ SYMBOLS_FETCH_MAP = {
     "INFY": "INFY.NS"
 }
 
+NSE_SESSION = None
+
+def get_nse_session():
+    global NSE_SESSION
+    if NSE_SESSION is None:
+        s = requests.Session()
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept': 'application/json'
+        }
+        s.headers.update(headers)
+        try:
+            s.get('https://www.nseindia.com', timeout=3)
+        except Exception:
+            pass
+        NSE_SESSION = s
+    return NSE_SESSION
+
+def fetch_nse_official_indices():
+    try:
+        s = get_nse_session()
+        r = s.get('https://www.nseindia.com/api/allIndices', timeout=2.5)
+        if r.status_code == 200:
+            data = r.json()
+            out = {}
+            for item in data.get('data', []):
+                name = item.get('index')
+                if name == 'NIFTY 50':
+                    out['NIFTY'] = {'ltp': float(item.get('last')), 'change_pct': float(item.get('percentChange'))}
+                elif name == 'NIFTY BANK':
+                    out['BANKNIFTY'] = {'ltp': float(item.get('last')), 'change_pct': float(item.get('percentChange'))}
+                elif name == 'NIFTY FINANCIAL SERVICES':
+                    out['FINNIFTY'] = {'ltp': float(item.get('last')), 'change_pct': float(item.get('percentChange'))}
+            return out
+    except Exception:
+        global NSE_SESSION
+        NSE_SESSION = None
+    return {}
+
 def fetch_single_ticker(pair):
     name, yf_sym = pair
     headers = {"User-Agent": "Mozilla/5.0"}
@@ -96,10 +136,16 @@ def update_all_ticks_background():
     t0 = time.time()
     ticks = dict(REAL_LIVE_TICKS_CACHE.get("ticks", {}))
 
-    # 1. Fetch live market prices concurrently across threads
+    # 0. Primary: Direct from official NSE exchange (0s delay)
+    nse_ticks = fetch_nse_official_indices()
+    for name, data in nse_ticks.items():
+        ticks[name] = data
+
+    # 1. Fetch remaining market prices concurrently across threads
     results = list(TICK_EXECUTOR.map(fetch_single_ticker, SYMBOLS_FETCH_MAP.items()))
     for name, ltp, chg in results:
-        if ltp is not None and ltp > 0:
+        # Don't overwrite NSE official index prices if already fetched
+        if name not in nse_ticks and ltp is not None and ltp > 0:
             ticks[name] = {"ltp": ltp, "change_pct": chg}
 
     # 2. Base prices for all other categories

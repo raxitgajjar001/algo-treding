@@ -443,6 +443,80 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+let currentChartMode = 'TRADINGVIEW';
+let tvWidgetInstance = null;
+
+function getTradingViewSymbol(sym) {
+  const clean = (sym || 'NIFTY').replace('NSE:', '').replace('BSE:', '').toUpperCase();
+  const map = {
+    'NIFTY': 'NSE:NIFTY',
+    'BANKNIFTY': 'NSE:BANKNIFTY',
+    'SENSEX': 'BSE:SENSEX',
+    'FINNIFTY': 'NSE:FINNIFTY',
+    'INDIAVIX': 'NSE:INDIAVIX',
+    'RELIANCE': 'NSE:RELIANCE',
+    'HDFCBANK': 'NSE:HDFCBANK',
+    'SBIN': 'NSE:SBIN',
+    'TATAMOTORS': 'NSE:TATAMOTORS',
+    'ICICIBANK': 'NSE:ICICIBANK',
+    'TCS': 'NSE:TCS',
+    'INFY': 'NSE:INFY'
+  };
+  return map[clean] || `NSE:${clean}`;
+}
+
+function initTradingViewChart(sym = 'NIFTY', interval = '5m') {
+  const tvWrapper = document.getElementById('tv-chart-wrapper');
+  const nativeWrapper = document.getElementById('native-chart-wrapper');
+  if (tvWrapper) tvWrapper.style.display = 'block';
+  if (nativeWrapper) nativeWrapper.style.display = 'none';
+
+  const tvSym = getTradingViewSymbol(sym);
+  let tvTf = (interval || '5m').toLowerCase().replace('m', '').replace('h', '60').replace('d', 'D');
+
+  const container = document.getElementById('tradingview_advanced_container');
+  if (container && typeof TradingView !== 'undefined') {
+    container.innerHTML = '';
+    tvWidgetInstance = new TradingView.widget({
+      "autosize": true,
+      "symbol": tvSym,
+      "interval": tvTf,
+      "timezone": "Asia/Kolkata",
+      "theme": "light",
+      "style": "1",
+      "locale": "in",
+      "toolbar_bg": "#f1f3f6",
+      "enable_publishing": false,
+      "allow_symbol_change": true,
+      "container_id": "tradingview_advanced_container",
+      "studies": [
+        "MASimple@tv-basicstudies",
+        "RSI@tv-basicstudies"
+      ]
+    });
+  }
+}
+
+function toggleChartEngine() {
+  const btn = document.getElementById('btn-chart-engine');
+  const tvWrapper = document.getElementById('tv-chart-wrapper');
+  const nativeWrapper = document.getElementById('native-chart-wrapper');
+
+  if (currentChartMode === 'TRADINGVIEW') {
+    currentChartMode = 'NATIVE';
+    if (btn) btn.textContent = '📊 Native Chart (Switch to TradingView)';
+    if (tvWrapper) tvWrapper.style.display = 'none';
+    if (nativeWrapper) nativeWrapper.style.display = 'block';
+    initNativeChart(currentChartSymbol);
+  } else {
+    currentChartMode = 'TRADINGVIEW';
+    if (btn) btn.textContent = '⚡ TradingView Pro (INDstocks Feed)';
+    if (tvWrapper) tvWrapper.style.display = 'block';
+    if (nativeWrapper) nativeWrapper.style.display = 'none';
+    initTradingViewChart(currentChartSymbol, currentTimeframe);
+  }
+}
+
 function switchChart(rawSymbol) {
   const sym = rawSymbol.replace('NSE:', '').replace('BSE:', '').toUpperCase();
   currentChartSymbol = sym;
@@ -460,10 +534,14 @@ function switchChart(rawSymbol) {
     renderIndexCategoryItems(activeIndexCategory);
   }
 
-  if (!nativeChart) {
-    initNativeChart(sym);
+  if (currentChartMode === 'TRADINGVIEW') {
+    initTradingViewChart(sym, currentTimeframe);
   } else {
-    loadChartData(sym, currentTimeframe);
+    if (!nativeChart) {
+      initNativeChart(sym);
+    } else {
+      loadChartData(sym, currentTimeframe);
+    }
   }
 
   // Smooth scroll to chart on mobile for great UX
@@ -485,7 +563,11 @@ function switchTimeframe(tf) {
     }
   });
 
-  loadChartData(currentChartSymbol, tf);
+  if (currentChartMode === 'TRADINGVIEW') {
+    initTradingViewChart(currentChartSymbol, tf);
+  } else {
+    loadChartData(currentChartSymbol, tf);
+  }
 }
 
 function toggleIndicator(ind) {
@@ -2054,7 +2136,11 @@ function startDashboardLoops() {
   try { fetchTradeHistory(); } catch (e) { console.error('fetchTradeHistory err:', e); }
   try { fetchAccounts(); } catch (e) { console.error('fetchAccounts err:', e); }
   try { fetchNews(); } catch (e) { console.error('fetchNews err:', e); }
-  try { initNativeChart('NIFTY'); } catch (e) { console.error('initNativeChart err:', e); }
+  try {
+    initTradingViewChart('NIFTY', '5m');
+  } catch (e) {
+    try { initNativeChart('NIFTY'); } catch (err) {}
+  }
 
   setInterval(() => { try { fetchLiveTicks(); } catch(e){} }, 500);
   setInterval(() => { try { fetchActiveTrades(); } catch(e){} }, 1500);
