@@ -470,8 +470,20 @@ document.addEventListener('keydown', (e) => {
 });
 
 function switchChart(rawSymbol) {
-  const sym = rawSymbol.replace('NSE:', '').replace('BSE:', '').toUpperCase();
+  let sym = (rawSymbol || '').replace('NSE:', '').replace('BSE:', '').toUpperCase();
+  if (sym.startsWith('NIFTY_') || sym.startsWith('NIFTY ')) sym = 'NIFTY';
+  else if (sym.startsWith('BANKNIFTY_') || sym.startsWith('BANKNIFTY ')) sym = 'BANKNIFTY';
+  else if (sym.startsWith('FINNIFTY_') || sym.startsWith('FINNIFTY ')) sym = 'FINNIFTY';
+  else if (sym.startsWith('SENSEX_') || sym.startsWith('SENSEX ')) sym = 'SENSEX';
+  
   currentChartSymbol = sym;
+
+  // Seamlessly sync with Pro Scalper console!
+  if (['NIFTY', 'BANKNIFTY', 'SENSEX', 'FINNIFTY'].includes(sym)) {
+    if (typeof selectScalpSymbol === 'function') {
+      selectScalpSymbol(sym);
+    }
+  }
 
   // Highlight active quick symbol button
   const symButtons = ['NIFTY', 'BANKNIFTY', 'SENSEX', 'RELIANCE', 'HDFCBANK', 'SBIN', 'TATAMOTORS', 'ICICIBANK', 'TCS', 'INFY'];
@@ -483,24 +495,14 @@ function switchChart(rawSymbol) {
   });
 
   const symBadge = document.getElementById('current-chart-symbol');
-  if (symBadge) symBadge.textContent = '🇮🇳 ' + sym;
+  if (symBadge) symBadge.textContent = sym;
 
   if (typeof renderIndexCategoryItems === 'function' && activeIndexCategory) {
     renderIndexCategoryItems(activeIndexCategory);
   }
 
-  if (!nativeChart) {
-    initNativeChart(sym);
-  } else {
+  if (nativeChart) {
     loadChartData(sym, currentTimeframe);
-  }
-
-  // Smooth scroll to chart on mobile for great UX
-  if (window.innerWidth < 768) {
-    const chartPanel = document.querySelector('.chart-panel');
-    if (chartPanel) {
-      chartPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
   }
 }
 
@@ -564,8 +566,17 @@ const lotSizes = { 'NIFTY': 75, 'BANKNIFTY': 15, 'SENSEX': 10, 'FINNIFTY': 25 };
 const strikeSteps = { 'NIFTY': 50, 'BANKNIFTY': 100, 'SENSEX': 100, 'FINNIFTY': 50 };
 window.lastTicksCache = null;
 
+const scalpDisplayNames = {
+  'NIFTY': 'NIFTY 50',
+  'BANKNIFTY': 'BANK NIFTY',
+  'SENSEX': 'SENSEX',
+  'FINNIFTY': 'FIN NIFTY'
+};
+
 function selectScalpSymbol(sym) {
   currentScalpSymbol = sym;
+  currentChartSymbol = sym;
+
   ['NIFTY', 'BANKNIFTY', 'SENSEX', 'FINNIFTY'].forEach(s => {
     const btn = document.getElementById('scalp-sym-' + s);
     if (btn) {
@@ -581,6 +592,10 @@ function selectScalpSymbol(sym) {
   if (qtyElem) {
     const totalQty = (lotSizes[sym] || 25) * scalpParams.lots;
     qtyElem.textContent = `(${totalQty} Qty)`;
+  }
+
+  if (typeof renderIndexCategoryItems === 'function' && activeIndexCategory) {
+    renderIndexCategoryItems(activeIndexCategory);
   }
 
   if (window.lastTicksCache) {
@@ -625,12 +640,14 @@ function updateScalperDisplay(ticks) {
   const ceLabelElem = document.getElementById('btn-label-ce-strike');
   const peLabelElem = document.getElementById('btn-label-pe-strike');
 
+  const symName = scalpDisplayNames[currentScalpSymbol] || currentScalpSymbol;
+
   if (tick && tick.ltp !== undefined) {
     const ltp = Number(tick.ltp);
     const step = strikeSteps[currentScalpSymbol] || 50;
     const atmStrike = Math.round(ltp / step) * step;
 
-    if (symElem) symElem.textContent = currentScalpSymbol + (currentScalpSymbol === 'NIFTY' ? ' 50' : '');
+    if (symElem) symElem.textContent = symName;
     if (ltpElem) ltpElem.textContent = '₹' + ltp.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
     
     if (chgElem) {
@@ -655,24 +672,24 @@ function updateScalperDisplay(ticks) {
     }
   }
 
-  // Update Scalper Strategy Confirmation Signal
+  // Update Scalper Strategy Confirmation Signal specifically for selected index
   const algoSigElem = document.getElementById('scalper-algo-signal');
   const algoDetailElem = document.getElementById('scalper-algo-detail');
   if (algoSigElem && algoDetailElem) {
-    const niftyTick = ticks['NIFTY'] || tick;
-    if (niftyTick && niftyTick.change_pct !== undefined) {
-      if (niftyTick.change_pct >= 0.15) {
+    const targetTick = tick || ticks['NIFTY'];
+    if (targetTick && targetTick.change_pct !== undefined) {
+      if (targetTick.change_pct >= 0.15) {
         algoSigElem.innerHTML = '🟢 BULLISH (9 EMA > 21 EMA)';
         algoSigElem.style.color = '#16A34A';
-        algoDetailElem.textContent = 'RSI (14): 58.2 | મજબૂત તેજી ટ્રેન્ડ કન્ફર્મ';
-      } else if (niftyTick.change_pct <= -0.15) {
+        algoDetailElem.textContent = `RSI (14): 58.2 | ${symName} મજબૂત તેજી ટ્રેન્ડ કન્ફર્મ`;
+      } else if (targetTick.change_pct <= -0.15) {
         algoSigElem.innerHTML = '🔴 BEARISH (9 EMA < 21 EMA)';
         algoSigElem.style.color = '#DC2626';
-        algoDetailElem.textContent = 'RSI (14): 41.5 | મજબૂત મંદી ટ્રેન્ડ કન્ફર્મ';
+        algoDetailElem.textContent = `RSI (14): 41.5 | ${symName} મજબૂત મંદી ટ્રેન્ડ કન્ફર્મ`;
       } else {
         algoSigElem.innerHTML = '⚪ RANGE-BOUND / CONSOLIDATION';
         algoSigElem.style.color = '#64748B';
-        algoDetailElem.textContent = 'RSI (14): 49.8 | બ્રેકઆઉટ લેવલની રાહ જોવાઈ રહી છે';
+        algoDetailElem.textContent = `RSI (14): 49.8 | ${symName} બ્રેકઆઉટ લેવલની રાહ જોવાઈ રહી છે`;
       }
     }
   }
