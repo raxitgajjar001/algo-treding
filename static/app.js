@@ -582,16 +582,67 @@ async function fetchLiveTicks() {
 
     // 3. Stream Active Candlestick on Chart in Real Time (< 0.5s sub-second tick)
     const currentTick = ticks[currentChartSymbol];
-    if (currentTick && currentCandle && allCandles.length > 0) {
-      const newClose = currentTick.ltp;
-      currentCandle.close = newClose;
-      if (newClose > currentCandle.high) currentCandle.high = newClose;
-      if (newClose < currentCandle.low) currentCandle.low = newClose;
+    if (currentTick && currentTick.ltp !== undefined && allCandles && allCandles.length > 0) {
+      const newClose = Number(currentTick.ltp);
 
-      if (indicatorsState.chartType === 'candles' && candleSeries) {
-        candleSeries.update(currentCandle);
-      } else if (indicatorsState.chartType === 'line' && areaSeries) {
-        areaSeries.update({ time: currentCandle.time, value: newClose });
+      function getTfSeconds(tf) {
+        switch ((tf || '').toLowerCase()) {
+          case '1m': return 60;
+          case '5m': return 300;
+          case '15m': return 900;
+          case '30m': return 1800;
+          case '1h': case '60m': return 3600;
+          case '1d': return 86400;
+          default: return 300;
+        }
+      }
+
+      const tfSec = getTfSeconds(currentTimeframe);
+      const IST_OFFSET = 19800;
+      const nowIstEpoch = Math.floor(Date.now() / 1000) + IST_OFFSET;
+      const bucketTime = Math.floor(nowIstEpoch / tfSec) * tfSec;
+
+      let lastCandle = allCandles[allCandles.length - 1];
+
+      if (typeof lastCandle.time === 'number') {
+        if (bucketTime > lastCandle.time) {
+          // New candle for next timeframe interval
+          const newCandle = {
+            time: bucketTime,
+            open: newClose,
+            high: newClose,
+            low: newClose,
+            close: newClose
+          };
+          allCandles.push(newCandle);
+          currentCandle = newCandle;
+          if (indicatorsState.chartType === 'candles' && candleSeries) {
+            candleSeries.update(newCandle);
+          } else if (indicatorsState.chartType === 'line' && areaSeries) {
+            areaSeries.update({ time: newCandle.time, value: newClose });
+          }
+        } else {
+          // Update active candle
+          lastCandle.close = newClose;
+          if (newClose > lastCandle.high) lastCandle.high = newClose;
+          if (newClose < lastCandle.low) lastCandle.low = newClose;
+          currentCandle = lastCandle;
+          if (indicatorsState.chartType === 'candles' && candleSeries) {
+            candleSeries.update(lastCandle);
+          } else if (indicatorsState.chartType === 'line' && areaSeries) {
+            areaSeries.update({ time: lastCandle.time, value: newClose });
+          }
+        }
+      } else {
+        lastCandle.close = newClose;
+        if (newClose > lastCandle.high) lastCandle.high = newClose;
+        if (newClose < lastCandle.low) lastCandle.low = newClose;
+        currentCandle = lastCandle;
+        if (indicatorsState.chartType === 'candles' && candleSeries) {
+          candleSeries.update(lastCandle);
+        } else if (indicatorsState.chartType === 'line' && areaSeries) {
+          areaSeries.update({ time: lastCandle.time, value: newClose });
+        }
       }
 
       const ltpElem = document.getElementById('current-chart-ltp');
@@ -2070,11 +2121,11 @@ function startDashboardLoops() {
   try { initNativeChart('NIFTY'); } catch (e) { console.error('initNativeChart err:', e); }
   try { checkBrokerAndAngelStatus(); } catch (e) { console.error('checkBrokerAndAngelStatus err:', e); }
 
-  setInterval(() => { try { fetchLiveTicks(); } catch(e){} }, 500);
+  setInterval(() => { try { fetchLiveTicks(); } catch(e){} }, 400);
   setInterval(() => { try { fetchActiveTrades(); } catch(e){} }, 1500);
   setInterval(() => { try { fetchStatus(); } catch(e){} }, 2000);
   setInterval(() => { try { fetchTradeHistory(); } catch(e){} }, 3000);
-  setInterval(() => { try { if (currentChartSymbol) loadChartData(currentChartSymbol, currentTimeframe, true); } catch(e){} }, 3000);
+  setInterval(() => { try { if (currentChartSymbol) loadChartData(currentChartSymbol, currentTimeframe, true); } catch(e){} }, 45000);
   setInterval(() => { try { fetchScanner(); } catch(e){} }, 5000);
   setInterval(() => { try { checkBrokerAndAngelStatus(); } catch(e){} }, 10000);
   setInterval(() => { try { fetchIndexCategories(); } catch(e){} }, 12000);

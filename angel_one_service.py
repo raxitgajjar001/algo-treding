@@ -125,7 +125,13 @@ class AngelOneService:
             "BANKNIFTY": ("NSE", "Nifty Bank", "99926009"),
             "FINNIFTY": ("NSE", "Nifty Fin Services", "99926037"),
             "MIDCPNIFTY": ("NSE", "NIFTY MID SELECT", "99926074"),
-            "SENSEX": ("BSE", "SENSEX", "1")
+            "SENSEX": ("BSE", "SENSEX", "1"),
+            "RELIANCE": ("NSE", "RELIANCE-EQ", "2885"),
+            "HDFCBANK": ("NSE", "HDFCBANK-EQ", "1333"),
+            "ICICIBANK": ("NSE", "ICICIBANK-EQ", "4963"),
+            "SBIN": ("NSE", "SBIN-EQ", "3045"),
+            "TCS": ("NSE", "TCS-EQ", "11536"),
+            "INFY": ("NSE", "INFY-EQ", "1594")
         }
         info = tokens.get(symbol.upper())
         if not info:
@@ -150,7 +156,8 @@ class AngelOneService:
         cache_key = f"{symbol.upper()}_{interval}"
         now_ts = time.time()
         cached = self.candle_cache.get(cache_key)
-        if cached and (now_ts - cached["time"] < 3.5):
+        # 20 second cache to avoid Angel One candle rate limits
+        if cached and (now_ts - cached["time"] < 20.0):
             return cached["data"]
 
         tokens = {
@@ -158,6 +165,12 @@ class AngelOneService:
             "BANKNIFTY": ("NSE", "99926009"),
             "FINNIFTY": ("NSE", "99926037"),
             "MIDCPNIFTY": ("NSE", "99926074"),
+            "RELIANCE": ("NSE", "2885"),
+            "HDFCBANK": ("NSE", "1333"),
+            "ICICIBANK": ("NSE", "4963"),
+            "SBIN": ("NSE", "3045"),
+            "TCS": ("NSE", "11536"),
+            "INFY": ("NSE", "1594")
         }
         info = tokens.get(symbol.upper())
         if not info:
@@ -188,9 +201,9 @@ class AngelOneService:
             "todate": to_str
         }
 
-        # Rate limiter: minimum 1.2s between calls
-        if (now_ts - self.last_candle_req) < 1.2:
-            time.sleep(1.2 - (now_ts - self.last_candle_req))
+        # Rate limiter: minimum 1.5s between calls to prevent rate limits
+        if (now_ts - self.last_candle_req) < 1.5:
+            time.sleep(1.5 - (now_ts - self.last_candle_req))
 
         try:
             self.last_candle_req = time.time()

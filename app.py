@@ -136,12 +136,14 @@ def update_all_ticks_background():
     t0 = time.time()
     ticks = dict(REAL_LIVE_TICKS_CACHE.get("ticks", {}))
 
-    # 0. Primary: Official Angel One SmartAPI live ticks
+    # 0. Primary: Official Angel One SmartAPI live ticks (Parallel Fetch < 0.6s)
     try:
         from angel_one_service import angel_one_service
         if angel_one_service.is_authenticated:
-            for idx in ["NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "SENSEX"]:
-                ltp_info = angel_one_service.get_ltp(idx)
+            angel_syms = ["NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "SENSEX", "RELIANCE", "HDFCBANK"]
+            with ThreadPoolExecutor(max_workers=7) as pool:
+                res_list = list(pool.map(angel_one_service.get_ltp, angel_syms))
+            for idx, ltp_info in zip(angel_syms, res_list):
                 if ltp_info:
                     ticks[idx] = {"ltp": ltp_info["ltp"], "change_pct": ltp_info["change_pct"]}
     except Exception:
@@ -153,11 +155,11 @@ def update_all_ticks_background():
         if name not in ticks:
             ticks[name] = data
 
-    # 1. Fetch remaining market prices concurrently across threads
+    # 2. Fetch remaining market prices concurrently across threads
     results = list(TICK_EXECUTOR.map(fetch_single_ticker, SYMBOLS_FETCH_MAP.items()))
     for name, ltp, chg in results:
-        # Don't overwrite NSE official index prices if already fetched
-        if name not in nse_ticks and ltp is not None and ltp > 0:
+        # CRITICAL: DO NOT overwrite if already in ticks (Angel One or NSE)
+        if name not in ticks and ltp is not None and ltp > 0:
             ticks[name] = {"ltp": ltp, "change_pct": chg}
 
     # 2. Base prices for all other categories
@@ -194,7 +196,7 @@ async def tick_updater_worker():
             await loop.run_in_executor(None, update_all_ticks_background)
         except Exception as e:
             pass
-        await asyncio.sleep(1.2)
+        await asyncio.sleep(0.4)
 
 async def keep_alive_worker():
     while True:
@@ -739,9 +741,17 @@ def get_market_chart(symbol: str, interval: str = "5m"):
     tf_interval, tf_range = interval_map.get(interval.lower(), ("5m", "1d"))
     cache_key = f"{sym}_{tf_interval}"
 
-    # Check cache (3.5s)
+    # Check cache (15s TTL to avoid rate limit stalls)
     cached = CHART_CACHE.get(cache_key)
-    if cached and (now - cached["time"] < 3.5):
+    if cached and (now - cached["time"] < 15.0):
+        # Update last candle with latest real-time tick from RAM
+        live_tick = REAL_LIVE_TICKS_CACHE.get("ticks", {}).get(sym)
+        if live_tick and live_tick.get("ltp") and cached["data"].get("candles"):
+            last_c = cached["data"]["candles"][-1]
+            last_c["close"] = live_tick["ltp"]
+            if live_tick["ltp"] > last_c["high"]: last_c["high"] = live_tick["ltp"]
+            if live_tick["ltp"] < last_c["low"]: last_c["low"] = live_tick["ltp"]
+            cached["data"]["current_price"] = live_tick["ltp"]
         return cached["data"]
 
     # Check if this is an F&O Option Contract
@@ -753,6 +763,13 @@ def get_market_chart(symbol: str, interval: str = "5m"):
         if angel_one_service.is_authenticated:
             angel_candles = angel_one_service.get_candles(sym, tf_interval)
             if angel_candles and len(angel_candles) > 0:
+                # Always overlay the freshest live tick onto the latest candle
+                live_tick = REAL_LIVE_TICKS_CACHE.get("ticks", {}).get(sym)
+                if live_tick and live_tick.get("ltp"):
+                    angel_candles[-1]["close"] = live_tick["ltp"]
+                    if live_tick["ltp"] > angel_candles[-1]["high"]: angel_candles[-1]["high"] = live_tick["ltp"]
+                    if live_tick["ltp"] < angel_candles[-1]["low"]: angel_candles[-1]["low"] = live_tick["ltp"]
+
                 volumes = [
                     {
                         "time": c["time"],
