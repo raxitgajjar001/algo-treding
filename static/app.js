@@ -580,35 +580,11 @@ function toggleChartType() {
     }
   }
   renderChartData();
-// --- Tabbed Navigation Controller (Solves Heavy DOM lag) ---
-function switchNavTab(tabName) {
-  const tabs = ['scalper', 'marketwatch', 'news', 'accounts'];
-  tabs.forEach(t => {
-    const btn = document.getElementById('nav-tab-' + t);
-    const pane = document.getElementById('tab-content-' + t);
-    if (btn) {
-      if (t === tabName) {
-        btn.className = 'nav-tab-btn active';
-        btn.style.background = '#2563EB';
-        btn.style.color = '#FFFFFF';
-        btn.style.border = 'none';
-      } else {
-        btn.className = 'nav-tab-btn';
-        btn.style.background = '#F8FAFC';
-        btn.style.color = '#475569';
-        btn.style.border = '1.5px solid #CBD5E1';
-      }
-    }
-    if (pane) {
-      pane.style.display = (t === tabName) ? 'block' : 'none';
-    }
-  });
+}
 
-  if (tabName === 'marketwatch') {
-    setTimeout(() => {
-      handleChartResize();
-    }, 60);
-  }
+// --- Tabbed Navigation Controller (Safe Fallback) ---
+function switchNavTab(tabName) {
+  // Safe no-op on unified dashboard layout
 }
 
 // --- Pro 1-Click Scalper & Autonomous Algo Console Controller ---
@@ -910,6 +886,9 @@ async function toggleTradingMode() {
       body: JSON.stringify({ mode: nextMode })
     });
     fetchStatus();
+  } catch (err) {
+    console.error('Mode switch error:', err);
+  }
 }
 
 async function toggleEngineState() {
